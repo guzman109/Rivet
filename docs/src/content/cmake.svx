@@ -1,0 +1,146 @@
+---
+title: CMake and tasks
+description: Understand generated build files, edit local cache options, and run tasks.
+section: Guides
+order: 11
+updated: '2026-10-09'
+---
+
+Generated C/C++ projects are ordinary CMake projects with explicit source lists. This guide describes their task workflow and the C++ build-file layout; C uses a smaller set of generated files. Python, Rust, and SwiftPM use their [native tasks](/docs/cli/#project-discovery-and-tasks).
+
+## Know which files to edit
+
+| File | Responsibility |
+| --- | --- |
+| `.rivet.json` | Project choices, files, target ownership, modules, and dependencies. |
+| `CMakeLists.txt` | Project entry point and your hand-written extensions. |
+| `cmake/RivetTargets.cmake` | Generated targets, file sets, source lists, and linkage. |
+| `cmake/Dependencies.cmake` | Generated CPM package declarations. |
+| `cmake/Options.cmake` | Editable project warning and sanitizer options. |
+| `CMakePresets.json` | Shared configure, build, and test presets. |
+| `CMakeUserPresets.json` | Ignored, machine-local compiler and cache choices. |
+
+File and target operations regenerate `RivetTargets.cmake`; dependency operations also regenerate `Dependencies.cmake`. Rivet compares their previous generated content with the files on disk and refuses to replace hand edits. Put custom CMake after the generated includes in `CMakeLists.txt`, or in your own included file.
+
+Source lists are explicit. Merely saving a new `.cpp` file does not add it to the build; [create it through a template](/docs/templates/) to update registration at the same time.
+
+## Configure and build
+
+Shared presets use `build/debug` and `build/release`. When a local compiler preset exists, Rivet chooses `local-debug` or `local-release` for configuration, then builds the matching directory.
+
+```sh
+rivet build --preset debug
+rivet test --preset debug
+rivet run --preset release
+rivet format
+```
+
+Build configures first. Test and run configure and build first. Format configures before invoking the generated `format` target. A failed step stops the sequence. With several applications, choose one explicitly using `rivet run --target viewer`; Neovim offers a picker.
+
+Direct CMake remains available:
+
+```sh
+cmake --preset local-debug
+cmake --build --preset debug
+ctest --preset debug
+```
+
+Use `debug` for configuration if there is no `local-debug` preset. Optional Just recipes provide `configure`, `build`, `test`, and `fmt`; application projects also include `run`.
+
+## Remember choices in Neovim
+
+The first editor task asks for an available configure preset. The selection persists per project across editor restarts; `:RivetPreset` changes it. CMake evaluates included files, inheritance, conditions, toolchain settings, and environment variables. Hidden or disabled presets are excluded. Run remembers the selected application, and `:RivetRunTarget` changes it. Removed applications are not reused: Rivet selects the remaining application or asks again when several exist.
+
+`:RivetTask repeat` repeats the last task with the currently selected preset and application. You can map it to a key in your configuration:
+
+```lua
+vim.keymap.set('n', '<leader>pr', '<cmd>RivetTask repeat<cr>', {
+  desc = 'Repeat project task',
+})
+```
+
+Use `:RivetBuildPreset` and `:RivetTestPreset` when several presets are associated with the selected configuration. A unique associated preset is selected automatically; without one, Rivet builds or tests the configured directory using the configure environment. `:RivetBuildTarget` chooses a target for Build; its default respects the build preset's targets. Run builds its selected application. Test respects the build/test presets rather than the Build target override.
+
+`:RivetStatus` and the task picker show active choices. `require('rivet').statusline()` returns a label for your statusline plugin without installing one. Choices live under `stdpath('state')/rivet/tasks/`, separately from the shared manifest. Changing configure preset clears its dependent selections. CLI commands use explicit flags.
+
+After a successful configure, Rivet copies that build's compilation database to `.cache/rivet/compile_commands.json`. The generated `.clangd` points there, so Release and custom configurations work too. An unchanged legacy `.clangd` containing only the old `build/debug` setting is migrated. Custom configurations are preserved: set their `CompilationDatabase` to `.cache/rivet` to follow Rivet. Build once for module artifacts; restart clangd if it retains stale diagnostics.
+
+## Add a custom preset
+
+Merge these entries into the corresponding arrays in `CMakeUserPresets.json`, keeping existing entries. Replace the compiler path with your executable. Shared presets may also define custom builds; keep machine-specific paths in the user file.
+
+```json
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "asan",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/asan",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "/path/to/clang++",
+        "RIVET_SANITIZERS": true
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "asan-build", "configurePreset": "asan", "jobs": 4 }
+  ],
+  "testPresets": [
+    {
+      "name": "asan-test",
+      "configurePreset": "asan",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
+```
+
+Select `asan` with `:RivetPreset`, or run:
+
+```sh
+rivet test --preset asan --build-preset asan-build --test-preset asan-test
+```
+
+Rivet invokes native CMake/CTest presets, preserving their jobs, targets, test filters, environments, and configuration choices. Multiple associated presets require an explicit selection; Rivet does not guess between them. Named local cache overrides created by Rivet keep the original build directory and task associations. If a preset was removed or disabled, select a replacement before retrying.
+
+Executable locations come from CMake's File API after configure, including `OUTPUT_NAME` and `RUNTIME_OUTPUT_DIRECTORY`. Rivet does not assume that every program is named after its target or placed directly in the build folder.
+
+## Inspect the actual toolchain
+
+Run `:RivetDoctor`, or `rivet doctor --preset asan`. Doctor compares preset intent with the configured compiler, checks the selected language mode and Clang scanner version, reports available `import std` modes, and checks compilation database freshness. With an attached clangd client, it also inspects that client's executable and module-support flag.
+
+Doctor is read-only: a toolchain-file project must be configured before its actual compiler can be known. A minimal syntax probe tests acceptance of the selected standard; only building the project verifies its module and library use. See [Compatibility](/docs/compatibility/) for the tested scope.
+
+## Read live output and diagnostics
+
+Editor tasks stream stdout and stderr as they arrive. The output window follows new output while your cursor is at its end; scrolling up lets you read earlier lines. Ctrl-C stops the active task and the remaining workflow; `q` closes its output without stopping it.
+
+GCC/Clang-style `file:line:column` or `file:line` errors, warnings, and notes are added to quickfix as complete lines arrive. Each workflow has its own list, shared across configure, build, and run or test. Run `:copen` and press Enter on a diagnostic to jump to the source. Use `:cnext` and `:cprevious` to move through entries. Unstructured linker, CMake, and test messages remain available in the output even when they do not contain a recognized source location.
+
+Rivet updates its own quickfix list if you switch to another list while a task runs. Use `:colder` or `:cnewer` to return to a previous result. Save your source buffers before building; the compiler reads files on disk.
+
+## Edit the cache interactively
+
+Configure first, then open `:RivetCMake`. The editor shows configured cache entries with help text, types, and values. A change writes a typed value into the selected local user preset and reconfigures.
+
+The CLI provides the same operation:
+
+```sh
+rivet cache --preset debug
+rivet cache RIVET_SANITIZERS ON --preset debug
+```
+
+Useful starting options include `BUILD_TESTING`, `RIVET_WARNINGS`, and `RIVET_SANITIZERS`. The sanitizer recipe enables address and undefined-behavior instrumentation for supported Clang/GCC builds. It is not a thread-sanitizer preset.
+
+Compiler, generator, toolchain, and dependency-cache locations are protected from this cache editor. Change those deliberately in presets and use a fresh compatible build directory. Rivet supports arbitrary available presets. Build directories must be explicitly set inside the project; in-source builds, paths through symlinks, and external build directories are rejected. A multi-config generator needs a build preset specifying its configuration when running an executable.
+
+## Testing and additional components
+
+CTest is the test runner. The starter registers a small dependency-free executable that checks work partition boundaries. Catch2 and other testing frameworks are not bundled; add one explicitly through [CPM dependencies](/docs/dependencies/) if needed.
+
+A folder does not have to become a target. Add a target when a component needs separate linkage, settings, or reuse. `:RivetTarget` and the CLI currently create executables or static libraries, not shared libraries or an automatic multi-repository build.
+
+## Existing projects and workload profiles
+
+Existing CMake projects can be configured, discovered, built, and run without a manifest; see [Existing projects](/docs/existing-projects/). Generated C++ projects also offer [HPC](/docs/hpc/) and [graphics](/docs/graphics/) profiles. [Runtime options](/docs/task-options/) keep application arguments and parallel resource controls separate from presets.

@@ -1,0 +1,11 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "rivet-docs",
+	"compatibility_date": "2026-10-10",
+	"assets": {
+		"directory": "./build",
+		"html_handling": "force-trailing-slash",
+		"not_found_handling": "404-page"
+	},
+	"send_metrics": false
+}

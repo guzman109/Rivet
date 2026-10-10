@@ -1,0 +1,151 @@
+---
+title: CLI reference
+description: Shared commands, language-specific creation options, native tasks, and preview behavior.
+section: Reference
+order: 20
+updated: '2026-10-10'
+---
+
+The CLI is optional. [Obtain the development checkout](/docs/start-here/#get-the-source), then run its `bin/rivet` or add that directory to `PATH`. The launcher uses Lua by default; select LuaJIT with `RIVET_LUA=luajit rivet doctor`. Its filesystem and process adapter supports macOS and Linux.
+
+## Shared creation options
+
+```sh
+rivet new ./engine --language cpp --standard 26 --modules false --preview
+rivet new ./analysis_demo --language python --preview
+rivet new ./compute_demo --language rust --kind workspace --preview
+rivet new ./personal_tool --language swift --preview
+rivet new ./interop --language c --standard 17 --preview
+```
+
+| Option | Values and behavior |
+| --- | --- |
+| `--language` | `cpp` (default), `c`, `python`, `rust`, or `swift`; additional providers can be registered in the running Lua process |
+| `--name` | Project identifier; otherwise derived from the destination folder. Explicit names must satisfy the chosen provider's identifier rules. |
+| `--kind` | `app` (default) or `library`; Rust also accepts `workspace` |
+| `--license` | `none` (default), `MIT`, `Apache-2.0`, `BSD-3-Clause`, or `GPL-3.0-only`; only for `new` |
+| `--license-holder` | Copyright holder; required when selecting a license |
+| `--license-year` | Four-digit year; defaults to the current year |
+| `--git` | Separate `true` or `false`; defaults to `false`. Only for `new`. |
+| `--interactive` | Terminal questionnaire with a final creation confirmation |
+| `--preview` | Print the complete plan without applying it |
+| `--build` | Run the language's Build workflow after creation; only for `new` |
+| `--preset` | Initial build choice, normally `debug` (default) or `release` |
+
+Use `rivet new . --git true --preview` to create directly in the current folder. The folder supplies the suggested project name; `--name` overrides it. Automatic names normalize punctuation and spaces and prefix names that would be invalid or reserved. No nested folder is added.
+
+Git initialization follows file writes and respects Git's configured default branch. An existing repository or worktree, including an enclosing repository, is reused. Rivet does not stage, commit, or add a remote. Missing Git fails an explicit initialization request before writes. If Git initialization itself fails afterward, project files remain and the error explains how to retry Git directly.
+
+Each provider generates its own `.gitignore`, even when Git initialization is skipped. Existing rules are preserved after generated rules so user exceptions keep their priority. Other destination collisions are refused.
+
+`--preview --build` only previews. A failed initial build leaves generated files available for correction. Python Build checks syntax; it does not configure an environment or produce a wheel. A new uv project therefore needs an explicit Configure before native tasks can use its environment.
+
+## C++ creation options
+
+These options apply to `--language cpp`. Choose **General C++** (`--profile general`) for the ordinary application/core starter.
+
+| Option | Values and default |
+| --- | --- |
+| `--standard` | `17`, `20`, `23`, or `26` (default) |
+| `--modules` | `true` or `false`; defaults to `false` in C++17 and `true` in later modes |
+| `--module-layout` | `single` or `split` (default) |
+| `--std-modules` | `true` or `false` (default); requires C++23+ and a compatible toolchain |
+| `--profile` | `general` (default), `cpu`, `openmp`, `mpi`, `cuda`, `metal`, `webgpu`, `vulkan`, `opengl` |
+| `--cuda-standard` | CUDA-only `17`, `20` (default), or `23`; independent of the host C++ mode |
+| `--cuda-architectures` | CUDA-only `native` (default), `all`, `all-major`, or a quoted list such as `'80;90'`; numbers can have `-real` or `-virtual` suffixes |
+| `--layout` | `feature` (default), `library`, or `flat` |
+| `--style` | `LLVM` (default), `Google`, `Chromium`, `Mozilla`, `WebKit`, `Microsoft`, or `GNU` |
+| `--header-guard` | `pragma` (default) or `ifndef` |
+| `--generator` | `Ninja` (default) or quoted `"Unix Makefiles"`; Make requires both module options off |
+| `--compiler` | Executable C++ compiler path, stored in local user presets |
+
+Boolean options require separate, lowercase words: `--modules false`, not `--modules=false`, `--modules yes`, or a bare `--modules`. `--preview`, `--interactive`, and `--build` are switches without values. Use [Modules and headers](/docs/modules/) for module requirements and [HPC](/docs/hpc/) or [graphics](/docs/graphics/) for workload setup.
+
+## Other language creation options
+
+| Language | Options |
+| --- | --- |
+| C | `--standard 11`, `17` (default), or `23`; CMake/Ninja starter. Select its C compiler through local CMake presets. |
+| Python | `--manager python` (default) or `uv`; generated package requires Python 3.11+ |
+| Rust | `--edition 2021` or `2024` (default); `--kind app`, `library`, or `workspace` |
+| Swift | `--kind app` or `library`; generated SwiftPM manifest requires Swift tools 6.0+ |
+
+Provider-specific C++ flags such as formatting style, modules, or layout do not configure Python, Cargo, or SwiftPM. Use their native configuration files and the language guides.
+
+## Add files and targets
+
+Generated mutations require `.rivet.json`. Run inside that project or add `--root PATH`:
+
+```sh
+rivet file Renderer --kind class --target engine_core --preview
+rivet target viewer --kind app --preview
+rivet target renderer --kind library --link-to engine --preview
+```
+
+| Provider | `file` behavior | `target` behavior |
+| --- | --- | --- |
+| C++ | `source`, `header`, `pair`, `class`, `module`, `module_impl`, `c_source`, or `c_header` | Application or static library; optional `--link-to` |
+| C | A named `.c` source in the chosen target | Application or static library |
+| Python | A named module under the generated package | Add entry points directly in `pyproject.toml` |
+| Rust | A named `.rs` file; declare it in the parent module yourself | Additional application under `src/bin/`; use Cargo for new libraries/workspace members |
+| Swift | A source under a recorded target's conventional directory; preserves `Package.swift` | Application or library; refuses an externally edited generated package manifest |
+
+For a C++ `module_impl`, provide `--module` with an existing module name. See [Files and targets](/docs/templates/) for path rules and [SwiftPM](/docs/swift/#native-tasks-and-targets) for customized packages.
+
+## Dependencies and file lifecycle
+
+The C++ dependency command registers a pinned CPM dependency; other providers use their native dependency tools:
+
+```sh
+rivet dependency fmt --repository fmtlib/fmt --tag 11.2.0 \
+  --target fmt::fmt --link-to engine_core --preview
+```
+
+`--version` aliases `--tag`; use an exact revision, not a version range. Scaffolding does not fetch it; a later configure can. See [CPM dependencies](/docs/dependencies/).
+
+`move FROM TO`, `remove PATH`, and `module-rename FROM TO` create plans for registered C/C++ files. `repair MANAGED_FILE` backs up an edited managed file and restores its recorded snapshot. These commands, plus `new`, `file`, `target`, and `dependency`, accept `--preview`. Omit it to apply the CLI plan. Preview is not a dry-run mode for build tasks. See [Existing projects and file changes](/docs/existing-projects/) and [recovery](/docs/troubleshooting/#recover-an-edited-managed-file).
+
+## Project discovery and tasks
+
+Commands search above the current directory for an Rivet manifest or a supported native project. CMake discovery skips ordinary nested source-list fragments in favor of a parent project declaration or presets. `--root PATH` selects a root explicitly. Existing CMake, Python, Cargo, and SwiftPM projects can run tasks without `.rivet.json`; they do not automatically gain generated-file ownership.
+
+| Provider | Available tasks and sequencing |
+| --- | --- |
+| C/C++ | Configure; Build configures first; Test and Run configure and build first; Format configures first |
+| Python | Configure environment explicitly; Check/Build checks syntax; Test, Run, Format, Lint, and Package use selected native tools |
+| Rust | Configure reads metadata; Check, Build, Test, Run, Format, Lint, and Package invoke Cargo |
+| Swift | Configure reads metadata; Check/Build invokes SwiftPM build; Test, Run, Format, Lint; Xcode handoff on macOS |
+
+Workflows stop at the first failed step. No task silently installs optional formatters or linters. Native tools retain their ordinary dependency-resolution behavior: for example, Cargo builds may download declared dependencies, and an explicit uv Configure syncs its environment.
+
+```sh
+rivet build --root ./engine --preset debug
+rivet test --root ./engine --preset release
+rivet run --root ./engine --target viewer
+rivet targets --root ./engine
+```
+
+For CMake, `--preset NAME` selects a configure preset. `--build-preset` and `--test-preset` select associated native presets; a unique association is selected automatically. `--build-target` overrides Build's target; Run builds the application selected with `--target`. A fresh existing project can be configured and run in one command. If it has several executable targets, choose one explicitly. [CMake and tasks](/docs/cmake/) covers custom presets.
+
+Python, Cargo, and SwiftPM use `debug` or `release` choices, not CMake preset files. Cargo binary selectors can use `package::binary`. Explicit runtime arguments, environments, working directories, and optional `benchmark`, `profile`, `submit`, `status`, and `cancel` hooks live in `.rivet.local.json`. See [Runtime options](/docs/task-options/).
+
+## Inspect and configure
+
+```sh
+rivet doctor --root ./engine --preset debug
+rivet cache --root ./engine --preset debug
+rivet cache BUILD_TESTING OFF --root ./engine --preset debug
+rivet styles
+rivet layouts
+rivet --help
+```
+
+Cache editing, styles, and layouts concern the CMake/C++ workflow. Doctor does not build or install tools and returns a nonzero status for reported errors; warnings alone do not fail it. Outside a project it reports available tools. Its [coverage table](/docs/troubleshooting/#what-doctor-checks) explains what a clean report can establish.
+
+## Version and former Outset projects
+
+`rivet --version` prints the plugin/CLI version. The launcher requires Lua; it is not a standalone compiled binary.
+
+Use `rivet migrate --root /path/to/project --preview` to review an Outset project's conversion, then repeat without `--preview` to apply it. Changed originals are backed up in `.rivet-recovery/`. The equivalent editor command is `:RivetMigrate`. Application names and module names stay the same; configure again to refresh the build and compilation database.
+
+The `outset` launcher still delegates to Rivet for old shell scripts. Projects with an `.outset.json` manifest need migration before Rivet tasks and mutations run.

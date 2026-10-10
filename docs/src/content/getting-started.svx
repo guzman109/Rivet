@@ -1,0 +1,77 @@
+---
+title: CLI quick start
+description: Create a C++ project, review its files, and run the first build.
+section: Start here
+order: 4
+updated: '2026-10-09'
+---
+
+The optional CLI shares Rivet's Lua core with Neovim and supports all five bundled languages. This quick start uses C++ with conventional headers. For native language workflows, follow [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), or [C](/docs/c/). First [obtain the development checkout](/docs/start-here/#get-the-source).
+
+## Check the tools
+
+The CLI needs Lua 5.1 or newer, or LuaJIT. The editor interface needs Neovim 0.11 or newer. No LuaRocks packages are required. Lua runs a script through its interpreter; LuaJIT is an alternative runtime, not a requirement for making the CLI executable.
+
+For the default C++ project, install CMake 3.30 or newer, a compiler that accepts C++26, and Ninja 1.11 or newer. Named modules also need compatible compiler dependency scanning. Homebrew LLVM supplies `clang++` and `clang-scan-deps` on macOS. `clang-format` provides actual formatting previews and formats generated sources. `just` is optional.
+
+From the Rivet checkout:
+
+```sh
+./bin/rivet doctor
+```
+
+The launcher uses `lua` by default. With LuaJIT, run `RIVET_LUA=luajit ./bin/rivet doctor`.
+
+Doctor reports tool availability. A successful configure and build verifies the selected project's actual compiler requirements. Rivet does not install or upgrade tools.
+
+## Create a first project
+
+Put the checkout's `bin` directory on your `PATH`, or use its full path instead of `rivet`:
+
+```sh
+rivet new ./engine \
+  --name engine --standard 26 --modules false --std-modules false \
+  --layout feature --style LLVM --git true --preview
+```
+
+Read the displayed file plan. Run the same command without `--preview` to create it, then build and test:
+
+```sh
+rivet build --root ./engine
+rivet test --root ./engine
+rivet run --root ./engine
+```
+
+An explicit compiler can be selected with `--compiler /path/to/clang++`. Its path is written to ignored `CMakeUserPresets.json`, keeping shared presets portable.
+
+For a terminal questionnaire, use `rivet new PATH --interactive`. For the editor wizard, follow [Neovim workflow](/docs/neovim/) and run `:RivetNew`.
+
+## Use the current folder
+
+From a folder you want to turn into a project:
+
+```sh
+mkdir engine
+cd engine
+rivet new . --git true --preview
+```
+
+The project name defaults to `engine`, with no extra subfolder. Review it, then rerun without `--preview`. Use `--name` to override the inferred name. Spaces and punctuation become underscores; leading digits and reserved C++ names get a `project_` prefix. Subsequent `rivet build`, `rivet test`, and `rivet run` commands find the project from this folder.
+
+`--git true` initializes a repository after the files are saved, or reuses an existing repository in this folder or a parent. Initialization is optional and creates no commit. The C++ `.gitignore` is generated either way; existing rules are retained after the generated defaults so user exceptions win. The CLI's default is to skip Git initialization.
+
+## Understand the starting choices
+
+Use `--standard 17|20|23|26` to choose the language mode and `--module-layout single|split` for named-module arrangement. C++17 defaults to headers.
+
+Defaults are C++26, named project modules, standard-library headers, an application with a reusable static core library, feature folders, Ninja, and LLVM formatting. The sample partitions a range of work into balanced worker ranges; it does not launch threads or initialize a graphics API.
+
+The project includes a small test executable registered with CTest. CTest runs tests; Catch2 is a separate testing library and is not included. The starter builds without fetching dependencies.
+
+`--modules` chooses how your own interfaces are organized. `--std-modules true` separately enables `import std;` and currently needs verified CMake versions 4.4.0 through 4.4.4 plus a compatible compiler and standard library. Read [Modules and headers](/docs/modules/) before selecting it.
+
+## Keep changes in the project
+
+`.rivet.json` records the project model. Rivet creates files inside the selected project root, refuses existing destination files except for the reviewed `.gitignore` merge, and checks for changes between preview and application. Later operations regenerate its owned CMake fragments while leaving custom build logic in the root `CMakeLists.txt`.
+
+Use [Files and targets](/docs/templates/) to add your first component. Generated `AGENTS.md` explains the conventions to an assistant; Rivet does not contact an AI service or automatically rewrite arbitrary CMake.

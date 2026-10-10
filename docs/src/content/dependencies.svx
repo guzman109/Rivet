@@ -1,0 +1,52 @@
+---
+title: CPM dependencies
+description: Add versioned source dependencies and link their exported CMake targets.
+section: Guides
+order: 13
+updated: '2026-10-09'
+---
+
+Rivet's C++ provider uses CPM for explicitly registered source dependencies. The general C++ starter has no third-party dependency to download and can configure and build offline with the required tools already installed. Workload profiles require the SDKs/runtimes described in their guides. C projects use custom CMake for dependencies; Python, Rust, and Swift use native package configuration.
+
+## Register the package and its consumer
+
+A dependency needs four pieces of information in addition to its local package name: the GitHub repository, a pinned revision, the dependency's exported CMake target, and the project target that consumes it.
+
+```sh
+rivet dependency fmt \
+  --repository fmtlib/fmt \
+  --tag 11.2.0 \
+  --target fmt::fmt \
+  --link-to engine_core \
+  --preview
+```
+
+Run the same command without `--preview` to register the dependency. In Neovim, `:RivetDependency` asks for these fields and shows the resulting changes before applying them.
+
+`--target` names the package's exported CMake target, here `fmt::fmt`. `--link-to` names your existing local target, here `engine_core`. These names are not interchangeable, and a repository name does not reliably reveal its exported target. Check the dependency's own CMake documentation.
+
+`--version` is accepted as an alias for the revision field. It passes that value as the Git tag; Rivet does not search a package registry, resolve a semantic-version range, or add a `v` prefix for you. Use the exact release tag or commit supported by the repository.
+
+## Know when the network is used
+
+Applying the dependency plan updates `cmake/Dependencies.cmake` and target linkage. It does not download the package. The next configure loads CPM and fetches sources as needed. Because build tasks configure first, `rivet build` can trigger that first dependency download.
+
+```sh
+rivet build --preset debug
+```
+
+CPM itself is pinned to version **0.43.1**. The generated bootstrap verifies its download against an embedded SHA256 checksum before inclusion and checks an existing cached copy too. Dependency sources and the CPM bootstrap live under the project's `.cache/CPM`; the directory is ignored by Git.
+
+A failed package-target check during configuration means the fetched project did not define the expected exported target. Confirm the spelling and the package's build options before changing unrelated compiler settings.
+
+## Choose a reproducible revision
+
+An immutable full Git commit ID is the strongest revision pin offered by this interface. Release tags are convenient, but their owners can move them. Pinning CPM's bootstrap does not make every transitive dependency immutable.
+
+Commit `.rivet.json` and the generated dependency declarations with the project. Machine-specific overrides belong in `CMakeUserPresets.json`. Keep custom `find_package` logic or package-specific CMake configuration in your own build extensions; Rivet's dependency command currently models GitHub source packages with explicit target linkage.
+
+## Add a testing library only when needed
+
+CTest already runs the starter's small test executable. Catch2 is not bundled, and enabling `BUILD_TESTING` does not install it. If you want Catch2, add its repository and revision explicitly, then arrange its target linkage and test integration in your project.
+
+Read [CMake and tasks](/docs/cmake/) for owned-file boundaries, and [Troubleshooting](/docs/troubleshooting/) for managed-file conflicts.

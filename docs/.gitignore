@@ -1,0 +1,10 @@
+.deno/
+node_modules/
+.svelte-kit/
+build/
+.DS_Store
+*.log
+
+.wrangler/
+.dev.vars*
+.env*

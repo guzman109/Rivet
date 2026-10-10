@@ -1,0 +1,58 @@
+---
+title: Existing projects and file changes
+description: Discover native projects, run their tools, and review changes to Rivet-owned source lists.
+section: Guides
+order: 16
+updated: '2026-10-09'
+---
+
+Open a file inside a CMake, Python, Cargo, or SwiftPM project and run `:RivetTask`. Rivet recognizes `CMakeLists.txt`, `pyproject.toml`, `Cargo.toml`, and `Package.swift`. For CMake it searches past nested source-list fragments for a project declaration or presets; an independently declared nested project can be selected as its own root. `--root PATH` explicitly chooses a CLI root. Discovery writes no manifest and does not claim ownership of existing source lists.
+
+## Work in an existing CMake project
+
+1. Run `:RivetTask configure`. Select an available native configure preset. Without preset files, Rivet offers Debug and Release under `build/rivet/debug` and `build/rivet/release`, using Ninja.
+2. Run `:RivetBuildTarget` to select a target discovered through CMake's File API.
+3. Run `:RivetTask build` or `:RivetTask test`. Native build/test presets remain authoritative when present.
+4. Run `:RivetRunTarget` to select a configured executable. Run resolves its real artifact, including a custom output name or directory.
+
+Running an external CMake application before its first configure starts configuration to discover targets. `rivet run --root .` configures, discovers, builds, and runs when there is one executable. With several, choose a target; an unknown target is rejected after discovery. Explicit CLI target names also work:
+
+```sh
+rivet configure --root .
+rivet targets --root .
+rivet run --root . --target viewer
+```
+
+CMake scripts execute during configuration as they normally do. Rivet writes its File API query in the selected build directory and a compilation-database copy in `.cache/rivet`. It preserves custom `.clangd` files; point `CompilationDatabase` at `.cache/rivet` to follow the selected build. See [CMake and tasks](/docs/cmake/).
+
+A multi-config project needs a build preset with a configuration. Build directories and executable artifacts must be inside the project; symlink paths and in-source builds are rejected. Create native presets before using the cache override editor on a project without presets.
+
+## Review a move or removal
+
+For files registered in `.rivet.json`, `:RivetFiles` offers a project-relative move/rename or removal. The review shows deleted files, new contents, the manifest change, and regenerated CMake source lists. `q` cancels; `c` applies.
+
+```sh
+rivet move src/core/extra.cpp src/core/detail.cpp --preview
+rivet move src/core/extra.cpp src/core/detail.cpp
+rivet remove src/core/detail.cpp --preview
+```
+
+File moves preserve bytes and module identity. Update affected `#include` paths and C++ identifiers explicitly; this is not a C++ semantic refactoring engine. Keep the extension, and avoid leaving a target without a compiled source. Removing an imported or implemented module is refused until its registered references have been addressed.
+
+The apply step checks the preview snapshots again and refuses changed files, symlinks, destination collisions, and unsaved Neovim buffers. Failed writes roll back committed file contents. After applying in Neovim, open buffers follow moved paths, removed-file buffers close, and clean buffers for rewritten files refresh. Saving a moved buffer writes to its new path. Files are removed only after the review is applied.
+
+## Rename a module's identity
+
+Use `:RivetModuleRename` separately from a filename move. It previews module declarations, implementation declarations, and imports in registered project files, plus the manifest mapping.
+
+```sh
+rivet module-rename simulation.core simulation.work --preview
+```
+
+The conservative token scan skips comments and string literals. It handles direct named declarations/imports; it is not a compiler-based refactor across dependencies, macro-generated code, partitions, or unregistered files. Inspect the diff, apply, then build and test.
+
+## Ownership stays explicit
+
+File-list mutations require an Rivet manifest. They do not adopt arbitrary existing CMake source lists. Python, Cargo, and SwiftPM tasks preserve native manifests and lockfiles; use their native tools for dependency changes. See the [Python](/docs/python/), [Rust](/docs/rust/), and [SwiftPM](/docs/swift/) guides.
+
+Automatic source-list adoption is a separate future migration workflow. Existing-project build support does not imply that migration has happened.

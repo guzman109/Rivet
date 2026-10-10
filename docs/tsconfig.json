@@ -1,0 +1,26 @@
+{
+	"extends": "$app/tsconfig",
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"moduleResolution": "bundler",
+		"types": ["node", "bun", "$app/types"]
+	},
+	"include": [
+		"src",
+		"vite.config.ts",
+		"prettier.config.ts",
+		"scripts/metadata.ts",
+		"scripts/highlight.ts",
+		"scripts/validate-docs.ts",
+		"tests",
+		"scripts/check-cloudflare.ts"
+	],
+	"exclude": ["node_modules", ".deno", "build", "src/service-worker"]
+}

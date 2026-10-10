@@ -1,0 +1,44 @@
+---
+title: Project licenses
+description: Choose a license, preview its complete text, and include it in a new project.
+section: Guides
+order: 23
+updated: '2026-10-10'
+---
+
+Rivet offers the same license choices for C++, C, Python, Rust, and Swift. A source-file comment and a project license serve different purposes: selecting a project license writes the complete terms to `LICENSE`.
+
+## Choose and preview
+
+During `:RivetNew`, the license step follows Git setup. Select a license, enter the copyright holder (a person or organization), and confirm the year. The fields start without an inferred identity. Rivet then shows the full license text and includes the files in the final project review. Nothing is written until you approve that review.
+
+| Choice | What Rivet creates |
+| --- | --- |
+| [MIT](https://spdx.org/licenses/MIT.html) | `LICENSE` with your copyright notice; a permissive license requiring notice retention |
+| [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) | Complete `LICENSE` plus a project `NOTICE`; includes an explicit patent grant and notice requirements |
+| [BSD-3-Clause](https://spdx.org/licenses/BSD-3-Clause.html) | `LICENSE` with your copyright notice; a permissive license with a non-endorsement clause |
+| [GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html) | Complete GPL v3 `LICENSE` and a project `NOTICE` explicitly choosing version 3 only |
+| No license yet | No new license file; this does not grant open-source permissions |
+
+The short descriptions help identify the choices; the linked full terms govern their use. Rivet does not determine whether a license is compatible with your dependencies. License texts are bundled, so creation does not need network access.
+
+MIT and BSD substitute your supplied copyright fields. Apache and GPL keep their full canonical text unchanged, including their instructional appendices; your project notice is separate. Existing `LICENSE` or `NOTICE` files are never overwritten. Choose No license yet to preserve existing terms while creating the rest of a project.
+
+## From the CLI
+
+```sh
+rivet new ./sample --language cpp --standard 20 --modules false \
+  --license MIT --license-holder "Ada Lovelace" --license-year 2026 --preview
+```
+
+Inspect the plan, then repeat without `--preview` to create it. `--license-year` defaults to the current year; a copyright holder is required for every offered license. `--license none` is the noninteractive default. `--interactive` asks these questions and shows the complete text before the final creation confirmation.
+
+For Python, the SPDX identifier and license-file list are written to `pyproject.toml`. Cargo packages receive the SPDX `license` field; a generated workspace member also receives its own copies of the license files for packaging. Creating metadata does not publish the package.
+
+## File comments and later changes
+
+Selecting a project license supplies initial SPDX and copyright fields when you personalize [comment headers](/docs/comment-headers/). A per-file license can be edited explicitly. Files added later use the saved header defaults and preserve the existing project license file.
+
+The project license selection is recorded in `.rivet.json`. There is no automatic relicensing command: editing a comment header does not change `LICENSE`, third-party notices, or the rights already granted under an earlier release.
+
+Rivet.nvim itself is available under [MIT](/licenses/rivet.txt). Its license is separate from the license you choose for generated projects.

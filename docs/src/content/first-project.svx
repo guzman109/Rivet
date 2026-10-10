@@ -1,0 +1,135 @@
+---
+title: Your first C++ project
+description: Create a project in Neovim, personalize its headers, add a module, and build, run, and test it.
+section: Start here
+order: 3
+updated: '2026-10-09'
+---
+
+This C++26 walkthrough creates an application named `engine`, adds a small single-file module, and uses a compiler error to try the quickfix workflow. The result is an ordinary CMake project you can keep editing afterward. For another language, start with [installation and language selection](/docs/start-here/#choose-your-first-project).
+
+## Load Rivet and check the tools
+
+Use Neovim 0.11 or newer and [obtain the development checkout](/docs/start-here/#get-the-source). Add this to your Neovim configuration if Rivet is not already loaded, replacing the checkout path with its actual location. An older checkout folder may still be named `project-workbench.nvim`.
+
+```lua
+vim.opt.runtimepath:prepend(
+  vim.fn.expand('/path/to/rivet.nvim')
+)
+require('rivet').setup({
+  default_preset = 'debug',
+})
+```
+
+Restart Neovim and run `:RivetDoctor`. This walkthrough needs CMake 3.30 or newer, Ninja 1.11 or newer, and a compiler that accepts C++26 and supports named modules with dependency scanning. On macOS, select your Homebrew LLVM `clang++` together with its matching `clang-scan-deps`. `clang-format` is optional but enables real formatting previews. See the [tool requirements](/docs/getting-started/#check-the-tools) for more context.
+
+Doctor checks availability. The first successful configure and build is the check that your selected toolchain works together.
+
+## Create and personalize
+
+In a parent directory of your choice, create a folder and open Neovim inside it:
+
+```sh
+mkdir engine
+cd engine
+nvim
+```
+
+Run `:pwd` to confirm the destination, then `:RivetNew` and use these choices. If a saved-profile menu appears, select **New choices** first:
+
+| Prompt | Choice for this walkthrough |
+| --- | --- |
+| Language | `cpp` (C++) |
+| Create project in | Current folder |
+| Project name | `engine` (inferred from the folder, editable) |
+| Git repository | Initialize Git (reuse an existing repository), or Skip Git initialization |
+| File comment headers | Personalize and preview styles, or No header |
+| C++ standard | C++26 |
+| Workload profile | General C++ |
+| Project kind | Application + reusable core |
+| C++ interface | Named modules |
+| Module files | Interface + implementation |
+| Standard library | Standard-library headers |
+| Project layout | Folder by feature |
+| Formatting style | LLVM |
+| Header protection | `#pragma once` |
+| C++ compiler | Your module-capable `clang++` executable |
+
+If you personalize headers, enter the details you want included; every field is optional. Keep `today` to stamp the creation date of each new file. Leave copyright and license fields blank unless you have text to include. The next panel compares the styles using your answers. Choose **Xcode-style** to try the spaced file-and-project header. The [header guide](/docs/comment-headers/) covers editing it later.
+
+Ninja is selected automatically for named modules. The standard library still uses `#include`; `import std;` is a separate option and is not needed for this walkthrough.
+
+Inspect the final file tree, Git action, and previews. Press `c` or Ctrl-S to create the project, or `q` to cancel. Everything is created directly in `engine`; no nested `engine/engine` folder is added. Enter selects options in ordinary pickers; the final review deliberately uses a separate apply key.
+
+A C++ `.gitignore` is generated even if you skip Git initialization. Existing ignore rules are preserved; unrelated files stay in place, and collisions with other generated files stop creation. If Git is selected, an existing repository is reused or a new one initialized, with no staging or commit.
+
+## Build, run, and test the starter
+
+Open the generated application:
+
+```vim
+:edit app/main.cpp
+:RivetTask build
+```
+
+Choose **debug** on the first task. Output appears as configure and build run. A failure stops the workflow; the output explains which step failed. A successful final step ends with `Exit status: 0`.
+
+Run `:RivetTask run`. It configures and builds before launching the application, which prints:
+
+```text
+Worker 0: [0, 4)
+```
+
+Then run `:RivetTask test`. CTest runs `engine_test`; the starter should report one passing test. It checks the range-partitioning example and does not require an external test framework.
+
+Use `q` to close task output. Rivet remembers Debug for this project across editor restarts, so subsequent tasks reuse it. `:RivetPreset` changes that choice; `:RivetTask repeat` repeats your last task with the currently selected preset and application. With more than one application, `:RivetRunTarget` changes which one Run launches.
+
+## Add a single-file module
+
+Run `:RivetFile`, choose **Module interface**, select the `engine_core` target, use the name `number`, and name the module `engine.number`. The review should add `src/core/number.cppm` and register it in the core target's `CXX_MODULES` file set. Approve with `c`.
+
+Open that file. Keep its optional comment header and replace the template below it with:
+
+```cpp
+export module engine.number;
+
+export namespace engine {
+constexpr int answer() {
+  return 42;
+}
+}
+```
+
+This module includes both the exported declaration and the definition. It needs no separate `.cpp` implementation file. The generated core module uses a split interface and implementation to demonstrate that alternative; both arrangements are valid.
+
+Now open `app/main.cpp`. Keep its optional comment header and replace the code below it with:
+
+```cpp
+#include <iostream>
+
+import engine.core;
+import engine.number;
+
+int main() {
+  std::cout << "Answer: " << engine::answer() << '\n';
+  const auto range = engine::partition_work(10, 3, 0);
+  std::cout << "Worker 0: [" << range.begin << ", " << range.end << ")\n";
+  return 0;
+}
+```
+
+Save both files with `:wall`, then run `:RivetTask run`. You should see `Answer: 42` followed by the original worker range. Rivet builds saved files, so save your edits before starting a task.
+
+## Follow a compiler error
+
+In `app/main.cpp`, temporarily change `engine::answer()` to `engine::answr()`, save, and run `:RivetTask build`. The build should fail and report the missing member.
+
+Run `:copen`. Rivet collects GCC/Clang-style file diagnostics while output streams. Select an entry and press Enter to jump to its file and location; `:cnext` and `:cprevious` move between entries. Relative compiler paths resolve from the build directory.
+
+Correct the typo, save, and run `:RivetTask repeat`. The build should succeed. Run `:RivetTask test` once more to check the original tests. A fresh workflow gets a fresh quickfix list, so old errors do not remain in the new result.
+
+## Make the next change
+
+Use `:RivetHeader` to preview an edit to the current file's comment header, or `:RivetHeaderDefaults` to change the defaults for future files. `:RivetCMake` opens the selected build's cache options; [CMake and tasks](/docs/cmake/) explains the controls.
+
+For another component, use [Files and targets](/docs/templates/). Keep custom CMake logic in `CMakeLists.txt`; generated target and dependency fragments are maintained through Rivet's reviewed operations.

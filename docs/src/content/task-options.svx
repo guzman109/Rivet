@@ -1,0 +1,68 @@
+---
+title: Runtime options and hooks
+description: Separate build settings from runtime arguments, environments, parallel resources, and explicit external tasks.
+section: Reference
+order: 25
+updated: '2026-10-09'
+---
+
+`:RivetRunOptions` edits a JSON object and previews the resulting `.rivet.local.json` before saving. New projects ignore this machine-local file. In an existing project, add it to your ignore rules when appropriate. Keep secrets in the process environment rather than writing them into command previews or shared files.
+
+```json
+{
+  "args": ["--input", "data/example with spaces.bin"],
+  "cwd": ".",
+  "env": { "MODE": "experiment" },
+  "jobs": 8,
+  "threads": 4
+}
+```
+
+Arguments are individual strings, not a shell command. Spaces, dollar signs, and shell metacharacters stay literal. `cwd` is a project-relative runtime directory; build/configure still operate at the project root. Environment values apply to task processes.
+
+## Available fields
+
+| Field | Meaning |
+| --- | --- |
+| `args` | Array appended to application/profiler/benchmark arguments |
+| `cwd` | Runtime working directory, default project root |
+| `env` | Object of string environment values |
+| `jobs` | CMake/Cargo/Swift build concurrency |
+| `threads` | `OMP_NUM_THREADS` |
+| `ranks`, `gpus` | Positive integer hook parameters; no implicit allocation |
+| `launcher` | Argv prefix for Run, such as `mpiexec` |
+| `benchmark`, `profile` | Explicit command arrays; build first, then execute |
+| `submit`, `status`, `cancel` | Explicit cluster command arrays, without implicit build or polling |
+| `job_id` | User-supplied scheduler ID for status/cancel hooks |
+| `python`, `python_module`, `test_runner` | Python interpreter, module, and `unittest`/`pytest` selection |
+
+Native tooling can require additional optional components. An unavailable task reports its requirement instead of installing software. Repeat reuses the last task and current remembered choices.
+
+## Benchmark and profiler commands
+
+```json
+{
+  "benchmark": ["hyperfine", "--shell=none", "{executable}"],
+  "profile": ["nsys", "profile", "--output", "profile-run", "{executable}"]
+}
+```
+
+The programs in these examples must already be installed. `{executable}` resolves the selected CMake artifact, Cargo build artifact, or SwiftPM executable; it is not a guessed filename. `{root}`, `{ranks}`, `{threads}`, and `{gpus}` are also available. Python hooks can specify the interpreter/module command explicitly. Use your benchmark tool's native argument conventions when passing arguments to the measured command.
+
+## Slurm examples
+
+```json
+{
+  "ranks": 4,
+  "threads": 2,
+  "gpus": 1,
+  "submit": ["sbatch", "--parsable", "--ntasks", "{ranks}", "--cpus-per-task", "{threads}", "--gpus", "{gpus}", "jobs/run.sbatch"],
+  "status": ["squeue", "--jobs", "{job_id}"],
+  "cancel": ["scancel", "{job_id}"],
+  "job_id": "12345"
+}
+```
+
+Replace the example ID with the scheduler's returned ID before status/cancel. Review your site-specific batch script and account/partition requirements. Rivet runs these commands only when you select `:RivetTask submit`, `status`, or `cancel`; creating a project or saving the settings submits nothing. There is no background polling or automatic resubmission. [Slurm batch command reference](https://slurm.schedmd.com/sbatch.html).
+
+In the task output buffer, `Ctrl-C` stops the local task's process group, including build/compiler and application children. On macOS/Linux, Rivet sends TERM, then KILL after one second for surviving processes in that group. A child that deliberately creates a separate session is outside that group. Remote jobs already accepted by a scheduler need the explicit cancel hook.

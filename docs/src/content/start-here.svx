@@ -1,0 +1,66 @@
+---
+title: Install and choose a language
+description: Load the development checkout, check your tools, and choose a first project for your language.
+section: Start here
+order: 1
+updated: '2026-10-10'
+---
+
+Rivet creates projects and runs their native tools from Neovim. Start with one language and one successful run; graphics SDKs, modules, and cluster hooks can come afterward. The CLI is optional.
+
+## Get the source
+
+Clone the [Rivet repository](https://github.com/guzman109/Rivet) into a folder you choose:
+
+```sh
+git clone https://github.com/guzman109/Rivet.git rivet.nvim
+cd rivet.nvim
+```
+
+This is the development version. The plugin runs inside Neovim; the optional CLI requires Lua or LuaJIT. No compiled standalone binary is distributed.
+
+The plugin folder must contain `lua/rivet/init.lua`, `plugin/rivet.lua`, and `bin/rivet`. Keep it in a location you control. Its directory may still be named `project-workbench.nvim`; the Lua module and commands are named Rivet regardless of that folder name.
+
+From the plugin folder, run `pwd` to get its absolute path. Substitute that path for `/path/to/rivet.nvim` below. This is the plugin's source folder, not the destination for your new projects.
+
+## Load it in Neovim
+
+Use Neovim 0.11 or newer on macOS or Linux. Add this to your Neovim configuration, then restart Neovim:
+
+```lua
+vim.opt.runtimepath:prepend('/path/to/rivet.nvim')
+require('rivet').setup()
+```
+
+For lazy.nvim, use this plugin specification instead:
+
+```lua
+{
+  'guzman109/Rivet',
+  name = 'rivet.nvim',
+  main = 'rivet',
+  opts = {},
+}
+```
+
+Run `:RivetDoctor`. If Neovim says the command does not exist, check the checkout path and restart after loading the configuration. No separate Lua installation is needed inside Neovim. The [Neovim guide](/docs/neovim/) covers keys, commands, and previews; the [CLI quick start](/docs/getting-started/) explains the optional terminal interface.
+
+## Choose your first project
+
+| Language | Tools for the first run | Follow next |
+| --- | --- | --- |
+| C++ | CMake 3.30+, Ninja 1.11+, compiler supporting your chosen standard; modules also need compatible dependency scanning | [C++ first project](/docs/first-project/) |
+| C | CMake 3.30+, Ninja, C compiler supporting C17 (default), C11, or C23 | [C project walkthrough](/docs/c/#first-run-in-neovim) |
+| Python | Python 3.11+; uv only if you choose it | [Python walkthrough](/docs/python/#first-run-in-neovim) |
+| Rust | Cargo and rustc supporting edition 2024 (default) or 2021 | [Rust walkthrough](/docs/rust/#first-run-in-neovim) |
+| Swift | Swift 6.0+ with SwiftPM; Xcode for Apple application work | [SwiftPM walkthrough](/docs/swift/#first-run-in-neovim) |
+
+C++26 remains the default. The C++ tutorial uses named modules; conventional headers are also supported in C++17/20/23/26. For a simpler first build without module scanning, choose **Headers and source files** or use the [C++ CLI example](/docs/getting-started/#create-a-first-project).
+
+Each walkthrough creates a project in a folder you choose, explains the expected result, and shows how to run its test. Doctor reports checks it can perform; a successful build and test verifies the actual workflow. See [Compatibility](/docs/compatibility/) for tested combinations and [Doctor coverage](/docs/troubleshooting/#what-doctor-checks) for its limits.
+
+## Already have a project?
+
+Open a file inside your existing CMake, Python, Cargo, or SwiftPM project and use `:RivetTask`. You do not need to create a Rivet manifest to build it. Follow [Existing projects](/docs/existing-projects/) for discovery and target selection.
+
+For your next step, use [parallel computing and CUDA](/docs/hpc/) or [graphics profiles](/docs/graphics/). Those guides keep SDK setup, compilation, and runtime validation separate.

@@ -1,0 +1,119 @@
+---
+title: Troubleshooting
+description: Resolve toolchain, module, cache, and generated-file problems in a predictable order.
+section: Reference
+order: 21
+updated: '2026-10-09'
+---
+
+Start with the failed task and its first error. The CMake sections below apply to C/C++; Python, Cargo, and SwiftPM use their native task output and environment. Configuration, compilation, editor diagnostics, and runtime checks establish different things.
+
+## No Rivet project found
+
+Commands search above the current file or working directory for `.rivet.json` or native markers: `CMakeLists.txt`, `pyproject.toml`, `Cargo.toml`, and `Package.swift`. CMake discovery prefers a project declaration or presets over a nested source-list fragment. Open a file in the project, change directory to its root, or choose an explicit CLI root:
+
+```sh
+rivet build --root ./engine
+```
+
+Native build tasks work without an Rivet manifest. File and target generation requires one; discovering an existing project does not adopt its source lists. See [Existing projects](/docs/existing-projects/).
+
+## What Doctor checks
+
+Run `:RivetDoctor` in the project, or `rivet doctor --root PATH`. Warnings describe missing optional tools or checks needing configuration; errors produce a nonzero CLI status. A clean report is not a substitute for Build, Test, or an actual GPU run.
+
+| Provider or profile | Checks | Still verify by running the workflow |
+| --- | --- | --- |
+| C++ | Selected preset/compiler, scanner and module requirements, compilation database and clangd settings | Actual feature support, linking, tests, runtime behavior |
+| C | Configured compiler from CMake File API; warns before a reply is available | Compiler standard support and actual build/test |
+| Python | Selected interpreter/environment, Python 3.11+, Ruff, packaging `build` for ordinary Python, selected pytest, uv where applicable | Imports, dependency compatibility, package creation, test results |
+| Rust | Cargo availability, rustfmt/Clippy commands, native target metadata | Successful compilation, lint, tests, runtime |
+| Swift | Swift availability, `swift format`, native target metadata | Package compilation, tests, Apple app integration |
+| OpenMP / MPI / CUDA | Relevant configured CMake compiler/runtime settings | Working runtimes, rank/thread behavior, NVCC host compatibility, actual devices |
+| Metal | macOS, Xcode Metal compiler, configured header path | Shader compilation and GPU pixel check |
+| Dawn / Vulkan / OpenGL | Configured SDK/loader/GLFW locations; explains runtime prerequisites | Vulkan shader tools and validation layers, working device/context, actual rendering |
+
+Configure first when a check needs CMake cache or File API data. Doctor does not install anything. Native package metadata discovery can evaluate `Package.swift` through SwiftPM.
+
+## CMake cannot compile the project
+
+Run `rivet doctor` or `:RivetDoctor` and inspect the selected preset, configured compiler, scanner, and compilation database. The generated project requires the standard selected at creation; individual language features still depend on the compiler. On macOS, check that the selected compiler is the intended LLVM installation, with a compatible `clang-scan-deps`, when using modules.
+
+Compiler paths belong in `CMakeUserPresets.json`. Rivet selects `local-debug` or `local-release` when those presets exist. Changing compiler or generator should use a fresh compatible build directory rather than reusing an incompatible CMake cache.
+
+Either module option requires Ninja. To create a conventional Make project, specify both choices:
+
+```sh
+rivet new ./example --name example \
+  --modules false --std-modules false \
+  --generator "Unix Makefiles"
+```
+
+## Standard-library modules are rejected
+
+The generated helper currently supports verified CMake versions **4.4.0 through 4.4.4**. A newer version may support imports itself but still fall outside Rivet's verified experimental gate. The error deliberately identifies that version limit.
+
+The compiler and selected standard library must also advertise import support for the selected C++23 or C++26 mode. A metadata error means CMake cannot find that toolchain's installed module manifest. Set `CMAKE_CXX_STDLIB_MODULES_JSON` in the appropriate local user preset when automatic discovery is unavailable. Use metadata belonging to the selected compiler/library installation; an unrelated manifest is not a substitute.
+
+Rivet preserves explicit metadata settings, including an invalid path, so inspect existing overrides before adding another. See [Modules and headers](/docs/modules/) for the supported arrangement.
+
+## clangd cannot find a module
+
+Build your selected preset first; for example:
+
+```sh
+rivet build --preset debug
+```
+
+Rivet refreshes `.cache/rivet/compile_commands.json` from the selected build after configure. Doctor identifies a missing or stale copy. Custom `.clangd` files are preserved; set `CompilationDatabase: .cache/rivet` if you want them to follow Rivet. Module artifacts are produced by the build, so configuration alone may leave `module 'std' not found` diagnostics.
+
+Check that clangd has module support enabled and uses the intended toolchain. Its module support is experimental; the existing Neovim LSP configuration remains responsible for starting it. Restart clangd if diagnostics persist after generating previously missing artifacts.
+
+Compare editor diagnostics with an actual build before changing working code solely to satisfy the language server. A missing declaration in clangd does not by itself prove that the compiler or standard library lacks that feature. The starter uses `std::cout`; this is not a general restriction on using `std::println`. See [clangd’s module-support status](https://clangd.llvm.org/features#experimental-c20-modules-support).
+
+## A generated-file update is refused
+
+Rivet refuses existing destination files, edited owned fragments, and files changed since preview. The creation-time exception is `.gitignore`: generated rules are prepended and your existing rules are preserved in the review. Inspect any conflicting path. Preserve custom CMake in the root `CMakeLists.txt` or an included custom file, then reconcile the manifest and generated fragment before retrying. Do not discard a newer edit just to dismiss the conflict.
+
+## Git setup failed
+
+Git initialization is optional. An explicit request requires Git on `PATH`; if it is missing, creation stops before writing. Rivet reuses existing repositories and worktrees instead of creating a nested repository. If that repository changes while a review is open, start a fresh preview.
+
+If the error says the project files were saved but Git setup failed, fix the reported Git issue and run `git init` inside the created folder. Repeating `RivetNew` would encounter the files that were already created. Rivet does not stage or commit files as part of creation.
+
+An interrupted process can leave `.rivet-lock`. Confirm no Rivet write is active before removing that empty lock directory.
+
+## Tests or formatting are unavailable
+
+CTest runs the starter's test executable; Catch2 is not automatically installed. Check `BUILD_TESTING` if the test workflow reports no tests. The generated `format` target exists only when CMake finds `clang-format`; install or expose the formatter, then configure again.
+
+## Recover an edited managed file
+
+Suppose you added `target_compile_definitions(simulation_core PUBLIC TRACE=1)` directly to `cmake/RivetTargets.cmake`. The next Rivet file operation stops because that file differs from its recorded snapshot.
+
+1. Run `:RivetRepair` and select `cmake/RivetTargets.cmake`.
+2. Review the restoration and a timestamped `.rivet-recovery/.../cmake/RivetTargets.cmake` copy containing your edits.
+3. Apply with `c`. The edited copy is preserved; a stale preview is refused.
+4. Move the intended `target_compile_definitions` line into the root `CMakeLists.txt` after the generated includes. Retry the original file operation and build/test.
+
+The CLI shows the same plan with `rivet repair cmake/RivetTargets.cmake --preview`. Omit `--preview` to apply it. Repair restores the recorded version; it does not infer how an independently edited manifest and generated file should be merged. Compare the backup and manifest if both were edited.
+
+## Native tools and hardware
+
+Check Doctor's coverage above and the selected environment before installing optional tools. SDK cache entries alone do not prove the entire SDK or runtime works. [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), and [graphics](/docs/graphics/) explain prerequisites and their first successful run.
+
+A generated GPU **test executable** returns 77 when hardware/context is unavailable. Its `SKIP_RETURN_CODE` property makes CTest report it as skipped; **CTest itself can exit 0 even when that GPU test did not run**. Inspect the skipped-test list or your CI's CTest results, not just the command status or aggregate percentage. Build errors and wrong readback pixels remain failures. [CMake skip-return-code behavior](https://cmake.org/cmake/help/latest/prop_test/SKIP_RETURN_CODE.html).
+
+## Swift package customization
+
+Adding a Swift source with `:RivetFile` preserves a customized `Package.swift`. Builds, tests, and Run continue to use SwiftPM's native manifest. Adding a target through Rivet needs a generated-manifest update and stops if you have edited that manifest.
+
+To keep custom dependencies or platform settings, add new products and targets directly in `Package.swift`. Native task discovery sees those changes. If you also change source paths or target names, use those native paths yourself; the generated file picker retains its recorded target directories.
+
+If you deliberately want the original generated manifest back:
+
+1. Save `Package.swift`, run `:RivetRepair`, and select it.
+2. Review both the restoration and the `.rivet-recovery/.../Package.swift` backup containing your customization.
+3. Apply only if restoring that snapshot is intended, then build and test.
+
+Repair does not merge dependencies, platforms, products, or targets. Reapplying custom settings makes the manifest customized again; Rivet target generation will again refuse to replace it. Unlike CMake, there is no separate `CMakeLists.txt` extension location for Swift package settings.

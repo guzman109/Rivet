@@ -1,0 +1,11 @@
+.deno/
+node_modules/
+.svelte-kit/
+build/
+bun.lock
+# mdsvex is authored as Markdown plus Svelte; preserve source examples verbatim.
+src/content/**/*.svx
+
+.wrangler/
+.dev.vars*
+.env*

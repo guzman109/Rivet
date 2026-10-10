@@ -1,0 +1,74 @@
+---
+title: Configuration
+description: Setup defaults, reusable project profiles, local identity, and remembered task choices.
+section: Reference
+order: 23
+updated: '2026-10-09'
+---
+
+Rivet installs commands without default key mappings. Configure the editor with `require('rivet').setup(options)`.
+
+## Setup options
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `projects_dir` | `nil` | Parent for new folders; unset uses Neovim's working directory. The destination remains editable. Current-folder creation always uses `:pwd`. |
+| `default_preset` | `'debug'` | Preferred choice before a project has a remembered selection. C/C++ uses available CMake configure presets; Python, Cargo, and SwiftPM offer `debug` and `release`. |
+| `profiles` | `{}` | Named sets of creation choices. Configured profiles take precedence over saved local profiles with the same name. |
+| `identity` | `nil` | Optional file-header defaults. If omitted, the wizard can use an identity explicitly saved with `:RivetIdentity`; otherwise fields start blank. |
+
+For example:
+
+```lua
+require('rivet').setup({
+  default_preset = 'debug',
+  profiles = {
+    ['Portable C++'] = {
+      language = 'cpp',
+      standard = 20,
+      modules = false,
+      std_modules = false,
+      kind = 'app',
+      layout = 'feature',
+      style = 'LLVM',
+      generator = 'Ninja',
+    },
+    ['C++26 modules'] = {
+      language = 'cpp',
+      standard = 26,
+      modules = true,
+      module_layout = 'single',
+    },
+  },
+})
+```
+
+These saved creation profiles choose a starting point; every answer is still editable and the complete file plan is reviewed before creation. They do not install tools. The C++ `profile` field selects a workload: `general` creates the ordinary starter, while `cpu`, `openmp`, `mpi`, `cuda`, `metal`, `webgpu`, `vulkan`, and `opengl` add dedicated examples and runtime tests. This workload setting is separate from the name of your saved creation profile.
+
+## Save choices from a project
+
+Run `:RivetProfile` inside an Rivet project, give the profile a name, and approve its preview with `c`. All profiles save `language`; additional fields are:
+
+| Provider | Saved creation choices |
+| --- | --- |
+| C++ | `standard`, `modules`, `std_modules`, `module_layout`, `kind`, `layout`, `style`, `header_guard`, `generator`, `profile`, and CUDA's `cuda_standard`, `cuda_architectures` when present |
+| C | `kind`, `standard` |
+| Python | `kind`, `manager` |
+| Rust | `kind`, `edition` |
+| Swift | `kind` |
+
+Project names, destinations, compiler paths, dependencies, files, Git actions, and identity are excluded. The next creation wizard offers your named profiles. Backspace returns to earlier preview questions; text prompts accept `:back`. Back navigation and cancellation do not write a project.
+
+## Remember header details explicitly
+
+`:RivetIdentity` collects optional details, previews styles, and then asks you to apply the local preference. The creation wizard offers **Use saved identity and preview styles**; you can edit or omit those details for each project. Nothing is inferred from your OS account or Git configuration.
+
+The `identity` setup option uses the same `style`, `author`, `email`, `organization`, `created`, `copyright`, `license`, and `description` fields as [file comment headers](/docs/comment-headers/). Ada Lovelace in the examples is a placeholder; new fields are not populated with her identity automatically.
+
+Saved profiles and identity live in `stdpath('state')/rivet/preferences.json`. Remove a named entry or the `identity` property there to forget it. Existing projects retain their own manifest defaults; `:RivetHeaderDefaults` changes those separately.
+
+## Build choices and status
+
+Configure/build/test presets, the Build target, application, and last task are stored per project under `stdpath('state')/rivet/tasks/`. `:RivetStatus` shows them, and the task picker includes them in its prompt. You may use `require('rivet').statusline()` in your statusline plugin to display the active Rivet project choices.
+
+Creation profiles and CMake presets serve different purposes: profiles start a new project, while CMake presets configure and run builds inside one. See [CMake and tasks](/docs/cmake/) for their commands and selection rules.

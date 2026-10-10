@@ -1,0 +1,5 @@
+#!/bin/sh
+# Compatibility launcher. Prefer bin/rivet for new scripts.
+RIVET_LUA=${RIVET_LUA:-${OUTSET_LUA:-lua}}
+export RIVET_LUA
+exec "$(dirname "$0")/rivet" "$@"

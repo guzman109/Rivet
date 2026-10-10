@@ -1,0 +1,80 @@
+---
+title: Python projects
+description: Create a Python package or CLI and use your selected interpreter, environment, and native tools.
+section: Guides
+order: 19
+updated: '2026-10-09'
+---
+
+Choose Python in `:RivetNew`, then an application or library and either ordinary Python or uv. Review includes `pyproject.toml`, a `src/` package, a unittest correctness test, and Python ignore rules. An application also has `__main__.py` and a packaging entry point. No personal identity or environment is inferred into generated files.
+
+## First run in Neovim
+
+[Load Rivet](/docs/start-here/) first. In a parent directory you choose, run:
+
+```sh
+mkdir analysis_demo
+cd analysis_demo
+nvim
+```
+
+1. Run `:RivetNew`. If a saved-profile menu appears, choose **New choices**. Select `python`, **Current folder**, and the inferred name `analysis_demo`.
+2. Choose Git initialization or skip it, and choose your comment header or **No header**. Select **Application** and **Python / existing environment**.
+3. Review the files and press `c`. Open `src/analysis_demo/__main__.py`, then run `:RivetTask run`. Choose Debug; the application prints `42` and exits successfully.
+4. Run `:RivetTask test`. The unittest runner should report one passing test (`OK`). No package installation is needed for this starter.
+5. Run `:RivetFile` and name the module `feature`. Add `from . import feature` in `__main__.py` when you want to use it. Save before repeating Run or Test.
+
+An intentional syntax error in a saved `.py` file appears in task output; `:copen` opens its file location. Correct it and run `:RivetTask repeat`. For uv, choose that manager instead and explicitly run Configure to sync before the first Run or Test.
+
+The equivalent optional CLI workflow is:
+
+```sh
+rivet new analysis_demo --language python
+rivet test --root analysis_demo
+rivet run --root analysis_demo
+```
+
+The test checks addition and cancellation to zero; Run prints `42`. `:RivetFile` creates another Python module in the package. Edit it, import it from your application, and repeat test or run.
+
+## Interpreter and environment
+
+Generated code requires Python 3.11 or newer. Selection order is an explicit `python` command/path in `.rivet.local.json`, a project `.venv`, an activated `VIRTUAL_ENV`, then a detected Python interpreter. Existing environments are reused, not replaced.
+
+```json
+{
+  "python": "/path/to/environment/bin/python",
+  "python_module": "analysis_demo",
+  "test_runner": "unittest",
+  "args": [],
+  "env": {}
+}
+```
+
+Configure creates `.venv` only when there is no selected/existing environment. It is a separate task; Run and Test do not install packages. The generated project adds its absolute `src` directory to `PYTHONPATH` for these tasks, so the initial package runs before an editable install. Existing projects retain their own import setup; set the module and environment explicitly.
+
+Install the package in your chosen environment when you want its console entry point available outside Rivet:
+
+```sh
+python -m pip install -e .
+```
+
+The package follows standard `pyproject.toml` project/build-system metadata. [Python packaging guide](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/).
+
+## Tasks
+
+| Task | Operation |
+| --- | --- |
+| Configure | Create/reuse the selected environment; uv mode explicitly syncs |
+| Check / Build | Compile Python sources to check syntax; this is not a wheel build |
+| Test | `unittest discover`, or your selected `pytest` |
+| Run | Selected `python_module` with runtime arguments |
+| Format / Lint | Ruff in the selected environment |
+| Package | `python -m build`, or `uv build` |
+
+Ruff, pytest, and the `build` module are optional tools to install deliberately in your environment. Doctor reports missing tools; Rivet does not silently install them. Python traceback and syntax-error file locations go to quickfix.
+
+## uv and existing projects
+
+Choose `--manager uv` for a new uv-managed project. Configure runs `uv sync --inexact --no-python-downloads`; `--inexact` preserves unrelated installed packages. An explicit `python` setting is passed to sync as `--python`; uv selects or creates its project environment with that interpreter. Later tasks use that project environment through `uv run --no-sync`, rather than an unrelated activated environment. Sync may download the declared backend and dependencies, so run it when you intend to resolve/install them. Commit the resulting `uv.lock`. [uv project lifecycle](https://docs.astral.sh/uv/guides/projects/).
+
+An existing `pyproject.toml` is enough for discovery. An existing `uv.lock` selects uv without rewriting the project. Use `uv add` or your current package manager for dependencies and inspect its native diffs. Rivet's source generator does not take ownership of an existing package configuration.

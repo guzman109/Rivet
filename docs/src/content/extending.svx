@@ -1,0 +1,108 @@
+---
+title: Language providers
+description: Extend the pure Lua project model while preserving shared preview and write boundaries.
+section: Reference
+order: 22
+updated: '2026-10-09'
+---
+
+A language provider is a Lua module containing schema validation, templates, and build-file mutations. The shared project service handles manifests, previews, conflict detection, and filesystem writes. Bundled providers cover C++, C, Python, Rust, and SwiftPM. They share the wizard, previews, file transactions, Git setup, and task UI.
+
+## Register a provider explicitly
+
+```lua
+local model = require('rivet.model')
+model.register('example', require('my_rivet.languages.example'))
+
+local plan = model.plan({
+  language = 'example',
+  name = 'experiment',
+})
+```
+
+This illustrates registration of a custom provider. Language IDs start with a lowercase letter and use lowercase letters, digits, or underscores. Registration cannot replace an existing provider. Use `model.supports('cpp')` or `model.list_languages()` to inspect the current registry.
+
+Register before using that language in the same Lua process. Passing an unregistered language ID to the CLI does not discover or install a provider. Project files never automatically execute a Lua provider.
+
+## Bundled languages and workloads
+
+[C++](/docs/modules/) remains the primary HPC/graphics path. [C](/docs/c/) covers standalone projects and mixed C/C++ ABI work. [Python](/docs/python/), [Rust](/docs/rust/), and [SwiftPM](/docs/swift/) use their native tools for build/run/test and dependencies.
+
+C++ workload profiles cover [CPU/OpenMP/MPI/CUDA](/docs/hpc/) and [Metal/WebGPU/Vulkan/OpenGL](/docs/graphics/). Hardware and SDK test status is recorded in [Compatibility](/docs/compatibility/).
+
+Future expansion can consider browser WebGPU, reviewed source-list adoption, deeper cluster integration, and Xcode application workflows. General JavaScript/TypeScript, Go, and Lua templates are not currently bundled.
+
+## Shared provider capabilities
+
+The registry now routes questionnaires and runtime services through the selected provider. Existing pure generation providers remain valid; optional capabilities add editor and task support without executing a provider named by a manifest.
+
+| Capability | Contract |
+| --- | --- |
+| `label` | Display name for the language. |
+| `default_name(folder)` | Suggest a valid editable name for a folder. Without this hook, the folder name passes through unchanged. |
+| `questions(kind, spec, context)` | Pure step descriptors for `new`, `file`, `target`, or `dependency`. Steps have a key/title, input/default or preview items, and optional validation/visibility hooks. |
+| `profile_fields` | Creation fields that may be saved in a reusable local profile. Identity and machine paths should be excluded. |
+| `ignore_rules(spec)` | Initial `.gitignore` text. Existing rules remain last so their exceptions keep priority. |
+| `formatter(spec, filename, tools)` | Optional formatter argv; the project service executes it while preparing the review. |
+| `local_files(spec, context)` | Additional machine-local files; the shared service resolves an explicitly supplied compiler first. |
+| `services.tasks` | Explicitly registered runtime module/table for preset listing and task plans. |
+| `services.doctor` | Read-only `inspect(root, preset, options)` returning diagnostic levels and messages. |
+| `services.headers` | Header fields/styles, normalization/rendering, leading-comment extraction, and supported-file checks. |
+| `services.diagnostics` | `parse(line, cwd)` returning a quickfix item or nil. |
+
+A task plan supplies argv for its tasks and may provide `prepare`, `after_configure`, `run_command`, and build context. The editor shares live output, quickfix, cancellation, and sequencing. The CMake implementation uses native presets and the File API; another provider supplies its own task service. Unsupported services raise a clear error rather than invoking CMake for an unrelated language.
+
+The shared wizard supports back navigation and final review. `:RivetProfile` saves provider-approved choices, and `:RivetIdentity` saves optional header details after a preview. Shared transactions, collision checks, and Git setup remain outside the provider. A strict provider never receives the creation-only Git option.
+
+Tool-generated manifests and lockfiles still need a deliberate preview strategy before adding ecosystem initializers. Every provider should be validated through creation, edit, build/run/test, diagnostics, and recovery, rather than just emitting templates.
+
+## Implement the five operations
+
+| Function | Contract |
+| --- | --- |
+| `normalize(options)` | Return a validated specification; reject unsafe or unsupported inputs. |
+| `plan(options)` | Return a new-project specification and relative-path-to-text file map. |
+| `add_file(spec, options)` | Return a new specification and files needed for the addition. |
+| `add_target(spec, options)` | Return a new specification and target-related changes. |
+| `add_dependency(spec, options)` | Return a new specification and dependency-related changes. |
+
+Plans and mutations share this result shape:
+
+```lua
+return {
+  spec = {
+    schema_version = 1,
+    language = 'example',
+    name = 'experiment',
+  },
+  files = {
+    ['src/main.example'] = 'starter source\n',
+    ['build.recipe'] = 'generated build instructions\n',
+  },
+  managed = {
+    ['build.recipe'] = true,
+  },
+}
+```
+
+The snippet describes the data contract, not a complete language implementation. Keep provider functions pure: do not mutate the caller's specification, read or write files, execute processes, or depend on `vim`. Return file text with its final newline and keep every path relative to the project root. Unsupported operations should raise an actionable error.
+
+The project service writes `.rivet.json`; the provider's file map should not create it itself.
+
+## Declare replaceable generated files
+
+Use `managed` for files that future operations may regenerate. Declare the path in the initial plan and repeat affected keys in each mutation. The project service stores their last generated content and refuses an update if that content was edited independently.
+
+Ordinary source files are created without overwriting existing files. The shared apply step also checks for changes since the preview. Keep filesystem policy here rather than inventing different safety behavior for every language.
+
+## Keep language conventions local
+
+Start with one Lua module such as `my_rivet/languages/rust.lua`. When templates become large, put supporting Lua modules or template resources beside it. A TOML file can describe values, but the current provider contract is Lua because validation and build-file mutations need behavior.
+
+A full integration also needs task routing and editor questions. C/C++ use the CMake service; Python, Cargo, and SwiftPM use the native task service. Unsupported operations should explain the native alternative.
+
+## Work with an assistant
+
+Generated `AGENTS.md`, README, and manifest files communicate project conventions to an assistant. Rivet does not call an AI service. An assistant can inspect those files, invoke the same previewable operations, and leave custom CMake inside the documented extension points.
+
+Use the repository's core tests for provider behavior and temporary-project integration tests for actual builds. [CMake and tasks](/docs/cmake/) describes the current C++ boundary.

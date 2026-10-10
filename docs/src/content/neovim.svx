@@ -1,0 +1,129 @@
+---
+title: Neovim plugin
+description: Set up the editor interface and use previews, templates, and project tasks.
+section: Start here
+order: 2
+updated: '2026-10-09'
+---
+
+Rivet is a Neovim plugin for creating C/C++, Python, Rust, and SwiftPM projects, adding files from templates, and running native tasks. It requires Neovim 0.11 or newer and the Rivet plugin. Start with [installation and language selection](/docs/start-here/) if you have not loaded the plugin yet.
+
+Run `:RivetNew` after loading the plugin to create your first project. Follow the [C++](/docs/first-project/), [C](/docs/c/#first-run-in-neovim), [Python](/docs/python/#first-run-in-neovim), [Rust](/docs/rust/#first-run-in-neovim), or [SwiftPM](/docs/swift/#first-run-in-neovim) walkthrough for your language.
+
+## Load the plugin
+
+Add the checkout to your runtime path and initialize it. Replace `/path/to/rivet.nvim` with your checkout's actual location:
+
+```lua
+vim.opt.runtimepath:prepend(
+  vim.fn.expand('/path/to/rivet.nvim')
+)
+require('rivet').setup({
+  default_preset = 'debug',
+})
+```
+
+New folders default to Neovim's current working directory. Optionally set `projects_dir` in `setup()` to a directory you choose; the wizard still lets you edit the destination. **Current folder** always uses Neovim's working directory, regardless of that setting. Run `:pwd` to check it and `:RivetDoctor` to open the plugin's health report.
+
+With lazy.nvim, use the GitHub plugin specification:
+
+```lua
+{
+  'guzman109/Rivet',
+  name = 'rivet.nvim',
+  main = 'rivet',
+  opts = { default_preset = 'debug' },
+}
+```
+
+For local development, replace the repository entry with `dir = '/path/to/rivet.nvim'`. The [configuration reference](/docs/configuration/) lists every setup option, saved profiles, and identity behavior.
+
+## Add a shortcut
+
+Commands work without key mappings. To add your own shortcut after setup:
+
+```lua
+vim.keymap.set('n', '<leader>pn', '<cmd>RivetNew<cr>', {
+  desc = 'Create a project',
+})
+```
+
+Choose a key that fits your configuration. The plugin does not install default mappings.
+
+## Create and review
+
+Run `:RivetNew`, choose a language, then choose **New folder** to enter a name and destination, or **Current folder** to generate directly in `:pwd`. Current-folder mode suggests the folder name and lets you edit it, without adding another directory. C++ identifiers replace spaces and punctuation with underscores; names starting with a digit or matching a reserved word receive a `project_` prefix.
+
+Choose **Initialize Git (reuse an existing repository)** to initialize a local repository after approving the file plan. Existing repositories, including enclosing repositories and worktrees, are reused. The review shows the Git action; initialization uses Git's configured default branch and does not stage files or create a commit.
+
+Every provider supplies a language-specific `.gitignore`: C/C++ build products, Python environments and caches, Cargo's `target/`, or SwiftPM's `.build/` and `.swiftpm/`. Existing ignore rules are kept after the generated rules so their exceptions take precedence. Other generated-file collisions are refused. To work on a project that already has native configuration, follow [Existing projects](/docs/existing-projects/).
+
+For C++, choose C++17, C++20, C++23, or C++26 (the default), then a workload profile. **General** creates the core/application example; the [HPC](/docs/hpc/) and [graphics](/docs/graphics/) profiles add their own executables. C++17 uses headers; C++20 and newer offer named modules, with a separate choice of a single-file interface or split interface and implementation. `import std` is available from C++23 when the toolchain supports it.
+
+The wizard separates your own C++ interfaces from the standard library: choosing named modules does not automatically enable `import std;`. Standard-library headers remain the default.
+
+Compare project kinds, layouts, and formatting styles in the preview panels. Header guard preferences are also recorded for headers created later in a mixed project.
+
+For file comment headers, choose **Personalize and preview styles**. Enter optional credits, date, and other details first, then compare compact, Xcode-style, documentation, and SPDX styles using those answers. The final project review shows the headers in each generated file. See [File comment headers](/docs/comment-headers/) for all fields and editing behavior.
+
+In a preview list, use `j` and `k` to move, Enter to select, and Tab to move focus into the scrollable preview. Press Backspace in a wizard preview to revisit the previous question, or enter `:back` at a text prompt. Folder, Git, and header menus include a Back choice. Press `q` or Escape in previews to cancel. The final review shows every planned file and its content. Press `c` or Ctrl-S to apply that plan; no project files are written before application.
+
+For an `import std;` project, creation is followed by a choice to configure and build Debug immediately. This runs asynchronously and creates the compiled module artifacts needed by the compiler and clangd. Choosing Later leaves the files ready for `:RivetTask build`. If configure fails, the build stops and the generated files remain available for correction.
+
+## See the editor workflow
+
+These captures render Neovim's actual UI grid using the plugin, with a Catppuccin-colored editor palette.
+
+![C++ workload choices in the Neovim preview panel](/images/neovim-wizard.png)
+
+![Final review showing generated source files before application](/images/neovim-review.png)
+
+![Actual CTest output in the plugin task window](/images/neovim-output.png)
+
+## Work inside a project
+
+Open a file beneath a generated project's root, or change Neovim's working directory to it. Rivet finds an owning `.rivet.json` or the nearest supported native project marker, and remembers a project created during the session. Existing native projects do not need conversion. Outset-generated projects use the migration described below. See [Existing projects](/docs/existing-projects/).
+
+| Command | Action |
+| --- | --- |
+| `:RivetFile` | Preview and add a source, header, pair, class, or module unit. |
+| `:RivetFiles` | Review a registered C/C++ file move, rename, or removal. |
+| `:RivetModuleRename` | Review a C++ module identity change and registered imports. |
+| `:RivetRepair` | Back up an edited managed file and restore its generated snapshot. |
+| `:RivetRunOptions` | Review runtime arguments, environment, parallel settings, and hooks. |
+| `:RivetHeader` | Review an addition, edit, or removal of the current file's comment header. |
+| `:RivetHeaderDefaults` | Review header defaults for future project files. |
+| `:RivetTarget` | Add a provider-supported application/library; see [Files and targets](/docs/templates/). |
+| `:RivetDependency` | C++: register a pinned CPM package and its target linkage. |
+| `:RivetCMake` | Inspect and edit the selected build's CMake cache. |
+| `:RivetTask` | Choose a task; choose a preset the first time. |
+| `:RivetPreset` | Change the remembered CMake preset or native Debug/Release choice. |
+| `:RivetBuildPreset` / `:RivetTestPreset` | CMake: choose associated build/test presets. |
+| `:RivetBuildTarget` | CMake: choose a Build target, or use preset defaults. |
+| `:RivetStatus` | Show active presets and targets. |
+| `:RivetProfile` | Review and save reusable project choices. |
+| `:RivetIdentity` | Review and save optional local header details. |
+| `:RivetDoctor` | Inspect the selected provider's tools; [coverage varies by provider](/docs/troubleshooting/#what-doctor-checks). |
+| `:RivetRunTarget` | Change the remembered application target. |
+| `:RivetTask build` | Native build; Python checks syntax, CMake configures first. |
+| `:RivetTask run` | Run the application through the provider's native workflow. |
+| `:RivetTask test` | Run the provider's test workflow. |
+| `:RivetTask repeat` | Repeat the previous task using current build choices. |
+
+For CMake, Build configures first and Test/Run configure and build first. Other providers sequence native tools; a failed or stopped step ends the workflow. Run prompts for an application when several exist. Recorded starter test executables are excluded; an existing CMake project's File API products can include test programs, so select the intended application. Preset, application, and last task are remembered per project across editor restarts in Neovim's local state directory.
+
+Output streams into a reused window: Ctrl-C stops the local task's process group, including compiler/application children, and `q` closes the output without stopping the task. [Runtime options](/docs/task-options/#slurm-examples) explains remote cancellation limits. C/C++, Swift, Cargo primary-span diagnostics, and Python traceback locations appear in quickfix; use `:copen`, Enter, `:cnext`, and `:cprevious` to navigate them. Save edited sources before building.
+
+## Keep your language tools
+
+For C++ projects, Rivet generates `.clangd`, `.clang-format`, and `.clang-tidy`. It does not replace your LSP client, completion plugin, debugger, or formatter integration. After configure, `.cache/rivet/compile_commands.json` follows the selected build. Run through Rivet to refresh it, or configure your own `.clangd` database path when using CMake directly.
+
+For missing module diagnostics, follow [Troubleshooting](/docs/troubleshooting/). For cache controls and preset behavior, see [CMake and tasks](/docs/cmake/).
+
+## Language and workload guides
+
+Use [C interoperability](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/), or [SwiftPM](/docs/swift/) for provider tasks. C++ also offers [HPC](/docs/hpc/) and [graphics](/docs/graphics/) profiles. All providers keep the same review/cancel flow.
+
+## Existing Outset setup
+
+Use `require('rivet').setup(...)` and `:Rivet…` commands in new configuration. The old `require('outset')` entry point still loads Rivet. Open a project with `.outset.json` and run `:RivetMigrate` to review its conversion and backups before applying. Reconfigure afterward.

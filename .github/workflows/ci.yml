@@ -1,0 +1,53 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    container: ubuntu:26.04
+    steps:
+      - name: Install Linux tools
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates lua5.4 luajit neovim make ninja-build clang clang-tools clang-format libc++-21-dev libc++abi-21-dev python3 python3-venv
+          python3 -m venv /opt/rivet-tools
+          /opt/rivet-tools/bin/pip install cmake==4.4.4
+          echo /opt/rivet-tools/bin >> "$GITHUB_PATH"
+      - uses: actions/checkout@v4
+      - name: Lua and project checks
+        env:
+          CXXFLAGS: -stdlib=libc++
+        run: |
+          lua tests/run.lua
+          luajit tests/run.lua
+          lua tests/licenses.lua
+          lua tests/migration.lua
+          lua tests/integration.lua
+          RIVET_TEST_FILTER='native Python' lua tests/batches.lua
+      - name: Neovim checks
+        env:
+          XDG_STATE_HOME: /tmp/rivet-nvim-state
+          NVIM_LOG_FILE: /tmp/rivet-nvim.log
+        run: |
+          for test in tests/nvim*.lua; do
+            nvim --headless -u NONE -i NONE -l "$test"
+          done
+  docs:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile
+      - run: bun run verify
+      - run: bun x --no-install wrangler deploy --dry-run

@@ -1,0 +1,131 @@
+/* Catppuccin/nvim's Latte and Mocha palettes, adapted to Prism tokens.
+ * https://github.com/catppuccin/nvim/tree/main/lua/catppuccin/palettes
+ * https://github.com/catppuccin/nvim/blob/main/lua/catppuccin/groups/syntax.lua
+ * https://github.com/catppuccin/nvim/blob/main/lua/catppuccin/groups/treesitter.lua
+ * Copyright (c) 2021 Catppuccin. MIT; see static/licenses/catppuccin-nvim.txt.
+ * Token boundaries come from Prism; no Neovim/LSP semantic analysis runs here.
+ */
+:root {
+	--syntax-base: #eff1f5;
+	--syntax-text: #4c4f69;
+	--syntax-comment: #7c7f93;
+	--syntax-mauve: #8839ef;
+	--syntax-blue: #1e66f5;
+	--syntax-green: #40a02b;
+	--syntax-peach: #fe640b;
+	--syntax-yellow: #df8e1d;
+	--syntax-sky: #04a5e5;
+	--syntax-teal: #179299;
+	--syntax-pink: #ea76cb;
+	--syntax-lavender: #7287fd;
+	--syntax-flamingo: #dd7878;
+	--syntax-maroon: #e64553;
+	--syntax-red: #d20f39;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--syntax-base: #1e1e2e;
+		--syntax-text: #cdd6f4;
+		--syntax-comment: #9399b2;
+		--syntax-mauve: #cba6f7;
+		--syntax-blue: #89b4fa;
+		--syntax-green: #a6e3a1;
+		--syntax-peach: #fab387;
+		--syntax-yellow: #f9e2af;
+		--syntax-sky: #89dceb;
+		--syntax-teal: #94e2d5;
+		--syntax-pink: #f5c2e7;
+		--syntax-lavender: #b4befe;
+		--syntax-flamingo: #f2cdcd;
+		--syntax-maroon: #eba0ac;
+		--syntax-red: #f38ba8;
+	}
+}
+pre {
+	background: var(--syntax-base);
+	color: var(--syntax-text);
+}
+pre .token.comment,
+pre .token.prolog,
+pre .token.doctype,
+pre .token.cdata {
+	color: var(--syntax-comment);
+	font-style: italic;
+}
+pre .token.punctuation {
+	color: var(--syntax-comment);
+}
+pre .token.keyword,
+pre .token.atrule,
+pre .token.important {
+	color: var(--syntax-mauve);
+}
+pre .token.string,
+pre .token.attr-value {
+	color: var(--syntax-green);
+}
+pre .token.char {
+	color: var(--syntax-teal);
+}
+pre .token.number,
+pre .token.boolean,
+pre .token.constant,
+pre .token.builtin {
+	color: var(--syntax-peach);
+}
+pre .token.function,
+pre .token.function-variable,
+pre .token.tag {
+	color: var(--syntax-blue);
+}
+pre .token.class-name,
+pre .token.type,
+pre .token.constructor {
+	color: var(--syntax-yellow);
+}
+pre .token.namespace,
+pre .token.attr-name {
+	color: var(--syntax-yellow);
+	font-style: italic;
+}
+pre .token.operator {
+	color: var(--syntax-sky);
+}
+pre .token.variable {
+	color: var(--syntax-text);
+}
+pre .token.parameter {
+	color: var(--syntax-maroon);
+}
+pre .token.property {
+	color: var(--syntax-lavender);
+}
+pre .token.symbol {
+	color: var(--syntax-flamingo);
+}
+pre .token.macro {
+	color: var(--syntax-mauve);
+}
+pre .token.directive,
+pre .token.directive-hash,
+pre .token.regex,
+pre .token.escape,
+pre .token.entity {
+	color: var(--syntax-pink);
+}
+pre .token.inserted {
+	color: var(--syntax-green);
+}
+pre .token.deleted {
+	color: var(--syntax-red);
+}
+pre .language-css .token.property {
+	color: var(--syntax-blue);
+}
+pre :is(.language-bash, .language-sh, .language-shell) .token.builtin {
+	color: var(--syntax-red);
+	font-style: italic;
+}
+pre :is(.language-bash, .language-sh, .language-shell) .token.parameter {
+	color: var(--syntax-green);
+}

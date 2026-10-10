@@ -1,0 +1,68 @@
+---
+title: Styles and layouts
+description: Compare the seven formatter presets and three project layouts without tying style to a domain.
+section: Guides
+order: 14
+updated: '2026-10-09'
+---
+
+These choices belong to the **C++ provider**. Formatting and folder structure are separate: pick a style that makes the code comfortable to read, then a layout that reflects the project's interfaces. Python, Cargo, and SwiftPM use the conventions and formatters described in their language guides.
+
+## Compare formatting presets
+
+The Neovim wizard uses `clang-format` to show a sample in the selected style when the formatter is available. The catalog and CLI also provide compact illustrative previews:
+
+```sh
+rivet styles
+```
+
+| Style | Familiar context | Typical visual character |
+| --- | --- | --- |
+| LLVM | LLVM/Clang and compiler or systems code | Compact, two-space indentation. |
+| Google | Google C++ projects, services, and libraries | Two spaces and a compact layout. |
+| Chromium | Browser and infrastructure projects | Google-derived defaults with Chromium conventions. |
+| Mozilla | Browser and platform code | Two spaces with distinctive function braces. |
+| WebKit | Browser rendering-engine code | Four-space indentation. |
+| Microsoft | Windows applications and tooling | Four spaces and expanded braces. |
+| GNU | GNU projects and tools | Indented braces and spaces before call parentheses. |
+
+These associations describe existing codebases, not mandatory rules for an industry. Graphics, games, GPU computing, HPC, embedded work, and systems tools can use any of them. An engine's contribution guide should take precedence when matching an established project.
+
+Rivet writes the selected `BasedOnStyle` to `.clang-format` and a matching basic indentation setting to `.editorconfig`. A formatting preset does not establish ownership, naming, error handling, memory allocation, or concurrency rules. Selecting Google formatting does not enforce every rule in Google's C++ style guide.
+
+## Pick one of three layouts
+
+```sh
+rivet layouts
+```
+
+| Layout | Starting organization | Useful when |
+| --- | --- | --- |
+| `feature` | `app/`, co-located core files under `src/core/`, and `tests/` | Growing a tool around features such as memory, scheduling, or rendering. |
+| `library` | Public headers under `include/<name>/`, implementations under `src/`, module interfaces under `modules/` | Building a reusable library with a deliberate public interface. |
+| `flat` | Main, core, and test files near the project root | Learning, experiments, and small isolated prototypes. |
+
+In a feature layout, a later directory such as `src/render/` can contain its interface and implementation together. This is a familiar folder-by-feature approach, but C++ still needs explicit build registration and clear interfaces between components.
+
+A folder is not automatically a CMake target. Create a separate target when the component needs its own dependencies, settings, or reuse. [Files and targets](/docs/templates/) explains how new file locations are derived and how to register a component.
+
+## Separate project kind from layout
+
+`--kind app` creates an executable, a reusable static core library, and a CTest executable. `--kind library` creates a static library and its test. Either kind can use any of the three layouts.
+
+For a systems experiment with room to grow:
+
+```sh
+rivet new ./scheduler --name scheduler \
+  --kind app --layout feature --style LLVM --preview
+```
+
+For a library with conventional public headers:
+
+```sh
+rivet new ./geometry --name geometry \
+  --kind library --layout library --modules false \
+  --header-guard ifndef --style WebKit --preview
+```
+
+These create C++ starting points. They do not automatically add OpenMP, MPI, CUDA, a renderer, or an engine-specific architecture.
