@@ -41,7 +41,7 @@ function M.run(argv, opts)
   for _, arg in ipairs(argv) do
     args[#args + 1] = M.quote(arg)
   end
-  local out, err, input = os.tmpname(), os.tmpname(), nil
+  local out, err, exit_status, input = os.tmpname(), os.tmpname(), os.tmpname(), nil
   local command = table.concat(args, ' ')
   if opts.cwd then
     command = 'cd ' .. M.quote(opts.cwd) .. ' && ' .. command
@@ -53,10 +53,27 @@ function M.run(argv, opts)
     f:close()
     command = command .. ' < ' .. M.quote(input)
   end
-  local code = status(os.execute(command .. ' > ' .. M.quote(out) .. ' 2> ' .. M.quote(err)))
+  -- Lua's os.execute can mistake a stale libc errno for the child's nonzero
+  -- exit status (for example, ENOSYS after clone3 falls back in a container).
+  -- Record the POSIX shell's status separately; do not rerun the command.
+  local wrapper = '( '
+    .. command
+    .. ' ) > '
+    .. M.quote(out)
+    .. ' 2> '
+    .. M.quote(err)
+    .. '; rivet_process_status=$?; printf "%s\\n" "$rivet_process_status" > '
+    .. M.quote(exit_status)
+  local wrapper_code = status(os.execute(wrapper))
+  local code = tonumber(M.read(exit_status) or '')
   local result = { code = code, stdout = M.read(out) or '', stderr = M.read(err) or '' }
+  if not code then
+    result.code = wrapper_code ~= 0 and wrapper_code or 1
+    result.stderr = result.stderr .. 'Could not capture process exit status.\n'
+  end
   os.remove(out)
   os.remove(err)
+  os.remove(exit_status)
   if input then
     os.remove(input)
   end

@@ -360,6 +360,27 @@ test('process arguments with spaces, quotes, and shell syntax remain literal', f
   check(output == expected, 'process adapter altered argument text')
 end)
 
+test('process execution preserves exit status and output on success and failure', function()
+  for _, code in ipairs({ 0, 1, 7, 38, 127, 255 }) do
+    local result = rt.run({
+      'sh',
+      '-c',
+      'printf output; printf diagnostic >&2; exit ' .. code,
+    })
+    check(result.code == code, 'expected exit ' .. code .. ', received ' .. result.code)
+    check(result.stdout == 'output' and result.stderr == 'diagnostic', 'process output changed')
+  end
+  local missing = rt.run({ 'rivet-nonexistent-test-command' })
+  check(missing.code == 127 and missing.stderr ~= '', 'missing command did not report failure')
+  local unavailable = rt.run({ 'printf', 'must not run' }, {
+    cwd = rt.join(temporary, 'nonexistent-working-directory'),
+  })
+  check(
+    unavailable.code ~= 0 and unavailable.stdout == '' and unavailable.stderr ~= '',
+    'missing working directory did not report failure'
+  )
+end)
+
 test('preview does not create the destination and apply refuses overwrites', function()
   local directory = rt.join(temporary, 'preview-only')
   local plan = project.plan({ name = 'engine', compiler = tools.clangxx }, directory)
