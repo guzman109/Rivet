@@ -37,7 +37,7 @@ local function test(name, fn)
     skipped = skipped + 1
     return
   end
-  local ok, err = pcall(fn)
+  local ok, err = xpcall(fn, debug.traceback)
   if ok then
     passed = passed + 1
     io.write('ok - ' .. name .. '\n')
@@ -893,7 +893,15 @@ test(
     }) do
       run({ 'git', 'check-ignore', path }, directory)
     end
-    check(rt.run({ 'git', 'check-ignore', 'app/main.cpp' }, { cwd = directory }).code == 1)
+    local source_ignore = rt.run({ 'git', 'check-ignore', 'app/main.cpp' }, { cwd = directory })
+    check(
+      source_ignore.code == 1,
+      'source ignore check returned '
+        .. source_ignore.code
+        .. ': '
+        .. source_ignore.stdout
+        .. source_ignore.stderr
+    )
     build(directory, 'debug', true)
   end
 )
@@ -914,9 +922,14 @@ test(
     )
     project.apply(directory, plan)
     check(rt.read(rt.join(directory, '.gitignore')):sub(-#ignore) == ignore)
+    local exception_ignore = rt.run({ 'git', 'check-ignore', 'important.o' }, { cwd = directory })
     check(
-      rt.run({ 'git', 'check-ignore', 'important.o' }, { cwd = directory }).code == 1,
-      'user exception lost precedence'
+      exception_ignore.code == 1,
+      'user exception ignore check returned '
+        .. exception_ignore.code
+        .. ': '
+        .. exception_ignore.stdout
+        .. exception_ignore.stderr
     )
     run({ 'git', 'check-ignore', 'local-data/file' }, directory)
     check(rt.read(rt.join(directory, '.git/config')) == git_config, 'existing Git config changed')
