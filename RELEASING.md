@@ -4,13 +4,13 @@ The current version is `0.1.0-dev`. Publishing the source repository does not cr
 
 ## Source publication
 
-The repository is [guzman109/Rivet](https://github.com/guzman109/Rivet). CI checks Lua, the Neovim UI, licenses, Outset migration, generated C/C++ projects on Linux, and the Bun website in Wrangler's local runtime. GPU SDK/runtime tests remain local opt-in checks; CI does not certify a CUDA, Vulkan, Metal, WebGPU, or OpenGL device.
+The repository is [guzman109/Rivet](https://github.com/guzman109/Rivet). CI checks formatting (StyLua), annotations (lua-language-server), Lua, the Neovim UI and help file, licenses, Outset migration, generated C/C++ projects on Linux and macOS, and the Bun website in Wrangler's local runtime. GPU SDK/runtime tests remain local opt-in checks; CI does not certify a CUDA, Vulkan, Metal, WebGPU, or OpenGL device.
 
 The plugin requires Neovim 0.11+. The optional CLI is `bin/rivet`, a relocatable shell launcher for portable Lua; it needs Lua 5.1+ or LuaJIT. It is **not a compiled standalone executable**. Do not label the source archive as an architecture-specific binary download.
 
 ## Before tagging a release
 
-1. Run the unit tests under Lua and LuaJIT, `tests/licenses.lua`, `tests/migration.lua`, and all `tests/nvim*.lua` scripts.
+1. Run the unit tests under Lua and LuaJIT, `tests/licenses.lua`, `tests/migration.lua`, all `tests/nvim*.lua` scripts, `stylua --check lua tests bin plugin`, and `lua-language-server --check .` (see the README for `VIMRUNTIME`).
 2. Run `tests/integration.lua` with the documented CMake/compiler combination. Run `tests/batches.lua` for installed native tools and available graphics SDKs; record skipped cases rather than describing them as passed.
 3. Run `bun install --frozen-lockfile`, `bun run verify`, and `bun run cf:check` in `docs/`.
 4. Update `lua/rivet/version.lua` and document the version's changes and known platform limitations. Inspect the complete staged source and CI result before making a version tag.

@@ -144,7 +144,7 @@ Cache editing, styles, and layouts concern the CMake/C++ workflow. Doctor does n
 
 ## Version and former Outset projects
 
-`rivet --version` prints the plugin/CLI version. The launcher requires Lua; it is not a standalone compiled binary.
+`rivet --version` prints the plugin/CLI version. The launcher requires Lua; it is not a standalone compiled binary. Other tools also install a command named `rivet`; call this checkout's `bin/rivet` by path or through an explicit symlink rather than replacing another installed command.
 
 Use `rivet migrate --root /path/to/project --preview` to review an Outset project's conversion, then repeat without `--preview` to apply it. Changed originals are backed up in `.rivet-recovery/`. The equivalent editor command is `:RivetMigrate`. Application names and module names stay the same; configure again to refresh the build and compilation database.
 
