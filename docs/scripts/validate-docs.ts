@@ -284,11 +284,18 @@ try {
 			(match) => match[1]
 		)
 	);
-	const editorCommandTable = editor.match(/local commands\s*=\s*\{([\s\S]*?)\n {2}\}/)?.[1] ?? '';
-	for (const command of editorCommandTable.matchAll(/(Rivet\w+)\s*=/g)) {
-		editorCommands.add(command[1]);
+	// Command table rows: { ':Rivet subcommand', ':RivetX command', function, description }
+	const subcommands = new Set(['task']);
+	for (const row of editor.matchAll(/\{\s*'([a-z][a-z-]*)',\s*'(Rivet\w+)'/g)) {
+		subcommands.add(row[1]);
+		editorCommands.add(row[2]);
 	}
-	check(editorCommands.size > 0, 'Could not extract Neovim commands from implementation');
+	check(editorCommands.size > 1, 'Could not extract Neovim commands from implementation');
+	for (const doc of documents) {
+		for (const command of doc.source.matchAll(/:Rivet ([a-z][a-z-]*)\b/g)) {
+			check(subcommands.has(command[1]), `${doc.slug}: unknown :Rivet subcommand ${command[1]}`);
+		}
+	}
 	for (const doc of documents) {
 		for (const command of doc.source.matchAll(/:(Rivet[A-Za-z]+)\b/g)) {
 			check(editorCommands.has(command[1]), `${doc.slug}: unknown Neovim command :${command[1]}`);

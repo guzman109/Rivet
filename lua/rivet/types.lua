@@ -14,7 +14,7 @@
 ---@field author? string
 ---@field email? string
 ---@field organization? string
----@field date? string
+---@field created? string `today`, YYYY-MM-DD, or blank.
 ---@field copyright? string
 ---@field license? string
 ---@field description? string

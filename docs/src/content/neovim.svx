@@ -3,7 +3,7 @@ title: Neovim plugin
 description: Set up the editor interface and use previews, templates, and project tasks.
 section: Start here
 order: 2
-updated: '2026-10-09'
+updated: '2026-10-12'
 ---
 
 Rivet is a Neovim plugin for creating C/C++, Python, Rust, and SwiftPM projects, adding files from templates, and running native tasks. It requires Neovim 0.11 or newer and the Rivet plugin. Start with [installation and language selection](/docs/start-here/) if you have not loaded the plugin yet.
@@ -84,6 +84,8 @@ These captures render Neovim's actual UI grid using the plugin, with a Catppucci
 
 Open a file beneath a generated project's root, or change Neovim's working directory to it. Rivet finds an owning `.rivet.json` or the nearest supported native project marker, and remembers a project created during the session. Existing native projects do not need conversion. Outset-generated projects use the migration described below. See [Existing projects](/docs/existing-projects/).
 
+Every command is also a subcommand of `:Rivet`, with Tab completion: `:Rivet file`, `:Rivet build-preset`, `:Rivet task build`. Run `:help rivet` for the offline reference.
+
 | Command | Action |
 | --- | --- |
 | `:RivetFile` | Preview and add a source, header, pair, class, or module unit. |
@@ -105,6 +107,7 @@ Open a file beneath a generated project's root, or change Neovim's working direc
 | `:RivetIdentity` | Review and save optional local header details. |
 | `:RivetDoctor` | Inspect the selected provider's tools; [coverage varies by provider](/docs/troubleshooting/#what-doctor-checks). |
 | `:RivetRunTarget` | Change the remembered application target. |
+| `:RivetMigrate` | Review converting an Outset project to Rivet. |
 | `:RivetTask build` | Native build; Python checks syntax, CMake configures first. |
 | `:RivetTask run` | Run the application through the provider's native workflow. |
 | `:RivetTask test` | Run the provider's test workflow. |
@@ -126,4 +129,4 @@ Use [C interoperability](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/)
 
 ## Existing Outset setup
 
-Use `require('rivet').setup(...)` and `:Rivet…` commands in new configuration. The old `require('outset')` entry point still loads Rivet, reports a deprecation through `:checkhealth vim.deprecated`, and will be removed in 0.3.0. Open a project with `.outset.json` and run `:RivetMigrate` to review its conversion and backups before applying. Reconfigure afterward.
+Use `require('rivet').setup(...)` and `:Rivet…` commands in new configuration. The old `require('outset')` entry point still loads Rivet, shows a deprecation warning, and will be removed in 0.3.0. Open a project with `.outset.json` and run `:RivetMigrate` to review its conversion and backups before applying. Reconfigure afterward.

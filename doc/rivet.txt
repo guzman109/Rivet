@@ -1,0 +1,243 @@
+*rivet.txt*       Project scaffolding and native tasks for C++, C, and more
+
+Author:  Carlos Guzman
+License: MIT (bundled license templates keep their upstream terms)
+
+==============================================================================
+CONTENTS                                                      *rivet-contents*
+
+  1. Introduction ........................................ |rivet-intro|
+  2. Setup ............................................... |rivet-setup|
+  3. Commands ............................................ |rivet-commands|
+  4. Previews and review ................................. |rivet-review|
+  5. Tasks ............................................... |rivet-tasks|
+  6. Lua API ............................................. |rivet-api|
+  7. Health .............................................. |rivet-health|
+  8. Outset compatibility ................................ |rivet-outset|
+
+==============================================================================
+1. INTRODUCTION                                                  *rivet-intro*
+
+Rivet creates C++, C, Python, Rust, and SwiftPM projects, adds files and
+targets from templates, and runs each project's native build tools. Every
+change is shown as a complete file plan before anything is written.
+
+Requirements: Neovim 0.11 or newer, plus the tools for the languages you use
+(for example CMake 3.30+ and Ninja 1.11+ for C++ modules). Rivet never
+installs or upgrades compilers or packages. The optional `rivet` CLI in `bin/`
+needs Lua 5.1+ or LuaJIT.
+
+The full guide, including per-language walkthroughs, lives in the
+repository's `docs/` site: https://github.com/guzman109/Rivet
+
+==============================================================================
+2. SETUP                                                         *rivet-setup*
+
+The plugin registers its commands on startup; calling setup() is only needed
+to change options. It may be called more than once; options are merged.
+
+With lazy.nvim: >lua
+    {
+      'guzman109/Rivet',
+      name = 'rivet.nvim',
+      main = 'rivet',
+      opts = { default_preset = 'debug' },
+    }
+<
+From a local checkout: >lua
+    vim.opt.runtimepath:prepend(vim.fn.expand('/path/to/rivet.nvim'))
+    require('rivet').setup({ default_preset = 'debug' })
+<
+                                                               *rivet-options*
+projects_dir      string or nil (default nil)
+                  Parent folder suggested for new projects. Unset uses
+                  Neovim's working directory. "Current folder" creation always
+                  uses |:pwd|.
+
+default_preset    string (default 'debug')
+                  Preset chosen before a project has a remembered selection.
+
+profiles          table (default {})
+                  Named creation choices offered by |:RivetNew|, for example
+                  `{ ['C++26 modules'] = { language = 'cpp', standard = 26,`
+                  `modules = true } }`. These take precedence over profiles
+                  saved with |:RivetProfile| under the same name.
+
+identity          table or nil (default nil)
+                  File-header defaults: `style`, `author`, `email`,
+                  `organization`, `created`, `copyright`, `license`,
+                  `description`. If omitted, the identity saved with
+                  |:RivetIdentity| is offered.
+
+Rivet installs no key mappings. For example: >lua
+    vim.keymap.set('n', '<leader>pn', '<cmd>Rivet new<cr>',
+      { desc = 'Create a project' })
+<
+==============================================================================
+3. COMMANDS                                                   *rivet-commands*
+
+                                                                      *:Rivet*
+:Rivet {subcommand} [args]
+                  Run any Rivet command. Press <Tab> to complete
+                  subcommands. Each subcommand matches a `:Rivet…` command
+                  below, for example `:Rivet build-preset` is
+                  |:RivetBuildPreset| and `:Rivet task build` is
+                  `:RivetTask build`.
+
+Creating projects ~
+                                                                   *:RivetNew*
+:RivetNew         Choose a language, profile, and options with previews, then
+                  review and create the project. (`:Rivet new`)
+
+                                                               *:RivetProfile*
+:RivetProfile     Save the current project's reusable choices as a named
+                  profile. (`:Rivet profile`)
+
+                                                              *:RivetIdentity*
+:RivetIdentity    Preview and save local file-header details.
+                  (`:Rivet identity`)
+
+Changing a project ~
+                                                                  *:RivetFile*
+:RivetFile        Add a source, header, pair, class, module interface, or
+                  module implementation and register it. (`:Rivet file`)
+
+                                                                 *:RivetFiles*
+:RivetFiles       Review moving, renaming, or removing a registered C/C++
+                  file. (`:Rivet files`)
+
+                                                          *:RivetModuleRename*
+:RivetModuleRename
+                  Review renaming a C++ module and its registered imports.
+                  (`:Rivet module-rename`)
+
+                                                                *:RivetTarget*
+:RivetTarget      Add an executable or library target. (`:Rivet target`)
+
+                                                            *:RivetDependency*
+:RivetDependency  C++: add a pinned CPM dependency and link it to a target.
+                  (`:Rivet dependency`)
+
+                                                                *:RivetHeader*
+:RivetHeader      Review adding, editing, or removing the current buffer's
+                  comment header. The buffer changes; save with |:write| or
+                  undo with |u|. (`:Rivet header`)
+
+                                                        *:RivetHeaderDefaults*
+:RivetHeaderDefaults
+                  Review header defaults for future files in this project.
+                  Existing files are not rewritten. (`:Rivet header-defaults`)
+
+                                                                *:RivetRepair*
+:RivetRepair      Restore a generated file, backing up your edited copy.
+                  (`:Rivet repair`)
+
+                                                               *:RivetMigrate*
+:RivetMigrate     Review converting an Outset project to Rivet.
+                  (`:Rivet migrate`)
+
+Build choices ~
+                                                                *:RivetPreset*
+:RivetPreset      Change the remembered configure preset. (`:Rivet preset`)
+
+                                       *:RivetBuildPreset* *:RivetTestPreset*
+:RivetBuildPreset
+:RivetTestPreset  CMake: choose the build or test preset associated with the
+                  configure preset.
+                  (`:Rivet build-preset`, `:Rivet test-preset`)
+
+                                                           *:RivetBuildTarget*
+:RivetBuildTarget CMake: choose the target Build compiles, or the preset
+                  default. (`:Rivet build-target`)
+
+                                                             *:RivetRunTarget*
+:RivetRunTarget   Change the remembered application for Run.
+                  (`:Rivet run-target`)
+
+                                                            *:RivetRunOptions*
+:RivetRunOptions  Review local task arguments, environment, parallelism, and
+                  launcher/profiler/cluster hooks. (`:Rivet run-options`)
+
+                                                                 *:RivetCMake*
+:RivetCMake       Inspect and edit the configured CMake cache. Edits are saved
+                  as local user-preset overrides and reconfigure.
+                  (`:Rivet cmake`)
+
+                                                                *:RivetStatus*
+:RivetStatus      Show the active presets and targets. (`:Rivet status`)
+
+                                                                *:RivetDoctor*
+:RivetDoctor      Open |:checkhealth| for the current project's toolchain.
+                  (`:Rivet doctor`)
+
+                                                                  *:RivetTask*
+:RivetTask [task] Run a task, choosing a preset the first time. Without an
+                  argument, pick from the provider's tasks. Common tasks:
+                  `configure`, `build`, `test`, `run`, `format`, and `repeat`
+                  (run the previous task with current choices).
+                  (`:Rivet task [task]`)
+
+==============================================================================
+4. PREVIEWS AND REVIEW                                          *rivet-review*
+
+Preview lists:
+  j, k            Move through choices.
+  <CR>            Select.
+  <Tab>           Move between the list and its scrollable preview.
+  <BS>            Return to the previous wizard question.
+  q, <Esc>        Cancel.
+
+Text prompts accept `:back` to return to the previous question.
+
+The final review lists every planned file with its full content (and a diff
+for changes). Press `c` or <C-s> to apply it. Nothing is written before then.
+A plan is refused if its files changed after it was generated.
+
+==============================================================================
+5. TASKS                                                         *rivet-tasks*
+
+For CMake, Build configures first; Test and Run configure and build first. A
+failed or stopped step ends the workflow. Other providers use their native
+tools (Cargo, SwiftPM, Python); Python's Build checks syntax.
+
+Output streams into a reused window:
+  <C-c>           Stop the task's process group, including children.
+  q               Close the output window without stopping the task.
+
+Compiler errors, warnings, and notes populate the |quickfix| list as they
+arrive; use |:copen|, |:cnext|, and |:cprevious|. Save sources first.
+
+Preset, targets, and the last task are remembered per project under
+`stdpath('state')/rivet/tasks/`.
+
+==============================================================================
+6. LUA API                                                         *rivet-api*
+
+                                                               *rivet.setup()*
+require('rivet').setup({opts})
+                  Merge {opts} (see |rivet-options|) and register commands.
+
+                                                          *rivet.statusline()*
+require('rivet').statusline()
+                  Return a label such as `Rivet · debug · run:engine` for
+                  the active project, or an empty string. For example: >lua
+    vim.o.statusline = "%f %= %{v:lua.require'rivet'.statusline()}"
+<
+Each command is also available as a function: `require('rivet').new()`,
+`require('rivet').task('build')`, and so on.
+
+==============================================================================
+7. HEALTH                                                       *rivet-health*
+
+`:checkhealth rivet` (or |:RivetDoctor|) reports the Neovim version, the
+selected preset, the toolchain the project actually uses, and whether clangd
+sees the selected compilation database.
+
+==============================================================================
+8. OUTSET COMPATIBILITY                                         *rivet-outset*
+
+Rivet was previously named Outset. `require('outset')` and `bin/outset` still
+work, show a deprecation warning, and will be removed in Rivet 0.3.0. Use
+|:RivetMigrate| to convert a project that has an `.outset.json` manifest.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
