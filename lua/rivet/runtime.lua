@@ -1,5 +1,17 @@
 -- POSIX adapter: argv are always shell-quoted on plain Lua; Neovim uses vim.system.
 local M = {}
+-- Inside Neovim, filesystem checks use libuv instead of spawning test(1).
+local uv = _G.vim and (vim.uv or vim.loop)
+local function stat_type(path, follow)
+  local stat = (follow and uv.fs_stat or uv.fs_lstat)(path)
+  return stat and stat.type
+end
+local function executable_file(path)
+  if uv then
+    return stat_type(path, true) == 'file' and uv.fs_access(path, 'X') == true
+  end
+  return M.run({ 'test', '-f', path }).code == 0 and M.run({ 'test', '-x', path }).code == 0
+end
 function M.quote(value)
   assert(type(value) == 'string' and not value:find('%z'), 'Invalid process argument')
   return "'" .. value:gsub("'", "'\\''") .. "'"
@@ -80,6 +92,10 @@ function M.run(argv, opts)
   return result
 end
 function M.cwd()
+  if uv then
+    local cwd = uv.cwd()
+    return assert(cwd and uv.fs_realpath(cwd), 'Cannot resolve cwd')
+  end
   local path = M.run({ 'pwd', '-P' }).stdout:match('([^\r\n]+)')
   assert(path, 'Cannot resolve cwd')
   return path
@@ -103,12 +119,21 @@ function M.absolute(path)
   return '/' .. table.concat(parts, '/')
 end
 function M.exists(path)
+  if uv then
+    return stat_type(path, false) ~= nil
+  end
   return M.run({ 'test', '-e', path }).code == 0 or M.run({ 'test', '-L', path }).code == 0
 end
 function M.is_dir(path)
+  if uv then
+    return stat_type(path, true) == 'directory'
+  end
   return M.run({ 'test', '-d', path }).code == 0
 end
 function M.is_link(path)
+  if uv then
+    return stat_type(path, false) == 'link'
+  end
   return M.run({ 'test', '-L', path }).code == 0
 end
 function M.mkdir(path)
@@ -145,14 +170,11 @@ end
 function M.executable(name)
   if name:find('/', 1, true) then
     name = M.absolute(name)
-    return M.run({ 'test', '-f', name }).code == 0
-        and M.run({ 'test', '-x', name }).code == 0
-        and name
-      or false
+    return executable_file(name) and name or false
   end
   for dir in (os.getenv('PATH') or ''):gmatch('[^:]+') do
     local path = M.join(dir, name)
-    if M.run({ 'test', '-f', path }).code == 0 and M.run({ 'test', '-x', path }).code == 0 then
+    if executable_file(path) then
       return M.absolute(path)
     end
   end
