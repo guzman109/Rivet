@@ -5,6 +5,15 @@ on:
 permissions:
   contents: read
 jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: 2.5.2
+          args: --check lua tests bin plugin
   linux:
     runs-on: ubuntu-24.04
     container: ubuntu:26.04
@@ -31,6 +40,31 @@ jobs:
         env:
           XDG_STATE_HOME: /tmp/rivet-nvim-state
           NVIM_LOG_FILE: /tmp/rivet-nvim.log
+        run: |
+          for test in tests/nvim*.lua; do
+            nvim --headless -u NONE -i NONE -l "$test"
+          done
+  macos:
+    runs-on: macos-15
+    steps:
+      - name: Install macOS tools
+        run: |
+          brew install lua luajit neovim ninja llvm
+          python3 -m venv "$RUNNER_TEMP/rivet-tools"
+          "$RUNNER_TEMP/rivet-tools/bin/pip" install cmake==4.4.4
+          echo "$RUNNER_TEMP/rivet-tools/bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@v4
+      - name: Lua and project checks
+        run: |
+          lua tests/run.lua
+          luajit tests/run.lua
+          lua tests/licenses.lua
+          lua tests/migration.lua
+          lua tests/integration.lua
+      - name: Neovim checks
+        env:
+          XDG_STATE_HOME: ${{ runner.temp }}/rivet-nvim-state
+          NVIM_LOG_FILE: ${{ runner.temp }}/rivet-nvim.log
         run: |
           for test in tests/nvim*.lua; do
             nvim --headless -u NONE -i NONE -l "$test"

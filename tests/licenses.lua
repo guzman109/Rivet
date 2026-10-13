@@ -95,16 +95,13 @@ test(
 )
 test('license is written atomically and survives adding sources', function()
   local destination = rt.join(temporary, 'licensed')
-  local p = project.plan(
-    {
-      name = 'sample',
-      language = 'python',
-      license = 'MIT',
-      license_holder = 'Ada',
-      license_year = '2026',
-    },
-    destination
-  )
+  local p = project.plan({
+    name = 'sample',
+    language = 'python',
+    license = 'MIT',
+    license_holder = 'Ada',
+    license_year = '2026',
+  }, destination)
   assert(not rt.exists(destination), 'Preview wrote files')
   project.apply(destination, p)
   local before = assert(rt.read(rt.join(destination, 'LICENSE')))

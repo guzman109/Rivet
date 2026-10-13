@@ -3,7 +3,7 @@ title: Compatibility
 description: Supported C++ modes, tested toolchain combinations, and current boundaries.
 section: Reference
 order: 24
-updated: '2026-10-10'
+updated: '2026-10-12'
 ---
 
 Rivet bundles C++, C, Python, Rust, and SwiftPM providers. The editor requires Neovim 0.11 or newer. The optional CLI uses Lua or LuaJIT; the process and filesystem adapter targets macOS and Linux.
@@ -31,6 +31,8 @@ The local integration suite exercises generated projects with Homebrew LLVM 23.1
 - Custom preset includes, conditions, environments, local cache overrides, executable artifact discovery, and clangd database selection have integration coverage.
 
 Lua 5.5 and LuaJIT exercise the shared model; Neovim tests cover wizard navigation, review/cancellation, headers, remembered tasks, and asynchronous diagnostics. Linux was also tested in an Ubuntu 26.04.1 ARM64 container with Lua 5.4.8, LuaJIT, Neovim 0.11.6, LLVM/libc++ 21.1.8, Ninja, and CMake 4.4.4. That run covers headers in C++17/20/23/26, named modules in C++20/23/26, and C++23/26 `import std`, including reconfiguration and added sources. Other distributions, compiler combinations, and Linux GPU runtimes still need their own validation.
+
+CI repeats the Lua, Neovim, and integration suites on macOS with Homebrew LLVM and on Ubuntu with LLVM/libc++ 21. GCC is not exercised: generated projects may build with it in header mode, but named modules and `import std` with GCC are untested and unsupported for now.
 
 ## Toolchain requirements
 
