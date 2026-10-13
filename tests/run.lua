@@ -125,6 +125,12 @@ test('default project requests C++26 and registers module file sets', function()
   check(content(plan, '.clangd'))
 end)
 
+test('CPM bootstrap keeps its pinned checksum verification intact', function()
+  local cpm = check(content(base(), 'cmake/CPM.cmake'), 'cmake/CPM.cmake missing')
+  has(cpm, 'releases/download/v0.43.1/CPM.cmake')
+  has(cpm, '\n  list(GET _wb_download_status 0 _wb_download_code)\n')
+  lacks(cpm, 'spec_helpers')
+end)
 test('standards enforce module boundaries and preserve old manifests', function()
   for _, standard in ipairs({ 17, 20, 23, 26 }) do
     local plan = base({ standard = standard, modules = false })
