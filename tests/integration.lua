@@ -1094,6 +1094,156 @@ test(
   end
 )
 
+test('file permissions survive replacements, moves, and rollback', function()
+  local directory = create('permissions', { language = 'c' })
+  local settings = require('rivet.task_options')
+  local local_path = rt.join(directory, '.rivet.local.json')
+  rt.write(local_path, json.encode({ env = { PRIVATE_SETTING = 'value' } }))
+  rt.chmod(local_path, tonumber('600', 8))
+  project.apply(directory, settings.plan(directory, { threads = 2 }))
+  check(rt.mode(local_path) == tonumber('600', 8), 'Private settings mode changed')
+
+  local source = rt.join(directory, 'src/core.c')
+  rt.chmod(source, tonumber('755', 8))
+  project.apply(
+    directory,
+    project.lifecycle_plan(directory, {
+      action = 'move',
+      from = 'src/core.c',
+      to = 'src/renamed.c',
+    })
+  )
+  source = rt.join(directory, 'src/renamed.c')
+  check(rt.mode(source) == tonumber('755', 8), 'Moved source lost its executable bit')
+
+  local manifest = rt.join(directory, '.rivet.json')
+  rt.chmod(manifest, tonumber('444', 8))
+  local before, source_before = rt.read(manifest), rt.read(source)
+  local plan = project.lifecycle_plan(directory, {
+    action = 'move',
+    from = 'src/renamed.c',
+    to = 'src/zfailed.c',
+  })
+  local rename = os.rename
+  os.rename = function(from, to)
+    if to == rt.join(directory, 'src/zfailed.c') then
+      return nil, 'injected destination failure'
+    end
+    return rename(from, to)
+  end
+  local ok, err = pcall(project.apply, directory, plan)
+  os.rename = rename
+  check(not ok and tostring(err):find('injected destination failure', 1, true))
+  check(rt.read(manifest) == before and rt.mode(manifest) == tonumber('444', 8))
+  check(rt.read(source) == source_before and rt.mode(source) == tonumber('755', 8))
+  check(not rt.exists(rt.join(directory, 'src/zfailed.c')))
+  check(not rt.exists(rt.join(directory, '.rivet-lock')))
+end)
+
+test('CMake cache edits preserve private user preset permissions', function()
+  local directory = create('preset-permissions', { standard = 17, modules = false })
+  local path = rt.join(directory, 'CMakeUserPresets.json')
+  rt.chmod(path, tonumber('600', 8))
+  cmake.set_cache(directory, 'debug', { name = 'RIVET_WARNINGS', type = 'BOOL' }, 'OFF')
+  check(rt.mode(path) == tonumber('600', 8))
+  check(rt.read(path):find('RIVET_WARNINGS', 1, true))
+end)
+
+test('multi-config tests inherit the build configuration without a test preset', function()
+  local directory = rt.join(temporary, 'multi-config-fallback-test')
+  rt.mkdir(directory)
+  rt.write(
+    rt.join(directory, 'CMakeLists.txt'),
+    [[cmake_minimum_required(VERSION 3.30)
+project(check_configuration LANGUAGES C)
+enable_testing()
+add_executable(check_configuration main.c)
+add_test(NAME check_configuration COMMAND check_configuration)
+]]
+  )
+  rt.write(rt.join(directory, 'main.c'), 'int main(void) { return 0; }\n')
+  rt.write(
+    rt.join(directory, 'CMakePresets.json'),
+    json.encode({
+      version = 6,
+      configurePresets = {
+        { name = 'multi', generator = 'Ninja Multi-Config', binaryDir = '${sourceDir}/build' },
+      },
+      buildPresets = {
+        { name = 'optimized', configurePreset = 'multi', configuration = 'Release' },
+      },
+    })
+  )
+  local tasks = cmake.tasks(directory, 'multi', nil, { task = 'test' })
+  run(tasks.configure, directory)
+  run(tasks.build, directory)
+  check(run(tasks.test, directory):find('100%% tests passed'))
+end)
+
+test('clangd synchronization recognizes quoted database paths and comments', function()
+  local directory = rt.join(temporary, 'quoted-clangd')
+  local binary = rt.join(directory, 'build')
+  rt.mkdir(binary)
+  rt.write(rt.join(binary, 'compile_commands.json'), '[]\n')
+  for _, value in ipairs({
+    '.cache/rivet',
+    '.cache/rivet # follows the selected preset',
+    "'.cache/rivet'",
+    '".cache/rivet" # follows the selected preset',
+  }) do
+    local config = 'CompileFlags:\n  CompilationDatabase: ' .. value .. '\n'
+    rt.write(rt.join(directory, '.clangd'), config)
+    check(cmake.sync_clangd(directory, binary))
+    check(rt.read(rt.join(directory, '.clangd')) == config)
+  end
+  for _, config in ipairs({
+    '# CompilationDatabase: .cache/rivet\nCompileFlags:\n  CompilationDatabase: elsewhere\n',
+    'CompileFlags:\n  CompilationDatabase: .cache/rivet#different-path\n',
+    'CompileFlags:\n  CompilationDatabase: .cache/rivet\n---\nCompileFlags:\n  CompilationDatabase: elsewhere\n',
+  }) do
+    rt.write(rt.join(directory, '.clangd'), config)
+    check(not cmake.sync_clangd(directory, binary))
+    check(rt.read(rt.join(directory, '.clangd')) == config)
+  end
+end)
+
+test('new module pair compiles with a consumer and current formatter settings', function()
+  local directory, initial = create('added-module-pair', { standard = 20, modules = true })
+  local main, core_dir
+  for _, target in ipairs(initial.spec.targets) do
+    if target.name == 'engine' then
+      main = target.sources[1]
+    end
+    if target.name == 'engine_core' then
+      core_dir = target.source_dir
+    end
+  end
+  project.apply(
+    directory,
+    project.file_plan(directory, {
+      name = 'src/answer',
+      kind = 'module_pair',
+      module = 'engine.answer',
+      target = 'engine_core',
+    })
+  )
+  rt.write(
+    rt.join(directory, assert(main)),
+    'import engine.answer;\nint main() { return engine::answer() == 42 ? 0 : 1; }\n'
+  )
+  build(directory, 'debug', true)
+  rt.write(
+    rt.join(directory, '.clang-format'),
+    'BasedOnStyle: LLVM\nIndentWidth: 7\nNamespaceIndentation: All\n'
+  )
+  local plan =
+    project.file_plan(directory, { name = 'extra', kind = 'source', target = 'engine_core' })
+  check(
+    plan.files[core_dir .. '/extra.cpp']:find('       //', 1, true),
+    'New source ignored current .clang-format'
+  )
+end)
+
 io.write(
   string.format(
     '\n%d passed; %d failed; %d skipped (%s)\nArtifacts: %s\n',

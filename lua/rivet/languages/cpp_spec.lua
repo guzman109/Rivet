@@ -165,6 +165,10 @@ function M.normalize(opts)
   end
   local target_names, file_names = {}, {}
   for _, target in ipairs(spec.targets) do
+    assert(
+      target.external == nil or type(target.external) == 'boolean',
+      'target.external must be boolean'
+    )
     M.identifier(target.name, 'target name')
     assert(not target_names[target.name], 'duplicate target: ' .. target.name)
     target_names[target.name] = true

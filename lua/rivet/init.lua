@@ -5,6 +5,10 @@ local context = require('rivet.context')
 local exports = {
   new = 'new',
   cmake = 'cmake',
+  config = 'config',
+  upgrade = 'project',
+  output = 'tasks',
+  stop = 'tasks',
   preset = 'tasks',
   build_preset = 'tasks',
   test_preset = 'tasks',
@@ -34,7 +38,7 @@ setmetatable(M, {
   end,
 })
 
--- { :Rivet subcommand, :RivetX command, function, description }
+-- { :Rivet subcommand, :RivetX command, function, description, optional tool argument }
 local commands = {
   { 'new', 'RivetNew', 'new', 'Create a project with previews' },
   { 'file', 'RivetFile', 'file', 'Add a file from a language template' },
@@ -49,6 +53,10 @@ local commands = {
   { 'target', 'RivetTarget', 'target', 'Add a CMake target' },
   { 'dependency', 'RivetDependency', 'dependency', 'Add a pinned CPM dependency' },
   { 'cmake', 'RivetCMake', 'cmake', 'Edit project CMake cache options' },
+  { 'config', 'RivetConfig', 'config', 'Review project tool configuration', true },
+  { 'upgrade', 'RivetUpgrade', 'upgrade', 'Review supplementary template upgrades' },
+  { 'output', 'RivetOutput', 'output', 'Reopen the current project task output' },
+  { 'stop', 'RivetStop', 'stop', 'Stop the current project task' },
   { 'preset', 'RivetPreset', 'preset', 'Change the remembered configure preset' },
   { 'build-preset', 'RivetBuildPreset', 'build_preset', 'Choose an associated build preset' },
   { 'test-preset', 'RivetTestPreset', 'test_preset', 'Choose an associated test preset' },
@@ -79,6 +87,23 @@ local commands = {
   { 'doctor', 'RivetDoctor', 'doctor', 'Check project toolchain availability' },
 }
 local task_names = { 'repeat', 'configure', 'build', 'test', 'run', 'format' }
+local function task_choices()
+  local active_root = context.active_root
+  local ok, names = pcall(function()
+    return require('rivet.tasks').names(context.current_root())
+  end)
+  context.active_root = active_root
+  if not ok or type(names) ~= 'table' then
+    return task_names
+  end
+  local choices = { 'repeat' }
+  for _, name in ipairs(names) do
+    if name ~= 'repeat' then
+      choices[#choices + 1] = name
+    end
+  end
+  return choices
+end
 
 local function run(name, ...)
   return context.protected(M[name])(...)
@@ -91,6 +116,9 @@ local function dispatch(args)
   end
   for _, command in ipairs(commands) do
     if command[1] == subcommand then
+      if command[5] then
+        return run(command[3], rest)
+      end
       return run(command[3])
     end
   end
@@ -99,6 +127,14 @@ local function dispatch(args)
       or ('Unknown Rivet subcommand: ' .. subcommand),
     vim.log.levels.ERROR
   )
+end
+
+local function tool_names()
+  local names = {}
+  for _, tool in ipairs(require('rivet.tool_config').tools()) do
+    names[#names + 1] = tool.id
+  end
+  return names
 end
 
 local function complete(lead, line)
@@ -110,7 +146,9 @@ local function complete(lead, line)
       choices[#choices + 1] = command[1]
     end
   elseif #words == 2 and words[2] == 'task' then
-    choices = task_names
+    choices = task_choices()
+  elseif #words == 2 and words[2] == 'config' then
+    choices = tool_names()
   end
   return vim.tbl_filter(function(choice)
     return vim.startswith(choice, lead)
@@ -120,9 +158,22 @@ end
 local registered = false
 local function register()
   for _, command in ipairs(commands) do
-    vim.api.nvim_create_user_command(command[2], function()
+    vim.api.nvim_create_user_command(command[2], function(args)
+      if command[5] then
+        run(command[3], args.args)
+        return
+      end
       run(command[3])
-    end, { desc = command[4], force = true })
+    end, {
+      desc = command[4],
+      force = true,
+      nargs = command[5] and '?' or nil,
+      complete = command[5] and function(lead)
+        return vim.tbl_filter(function(name)
+          return vim.startswith(name, lead)
+        end, tool_names())
+      end or nil,
+    })
   end
   vim.api.nvim_create_user_command('RivetTask', function(args)
     run('task', args.args)
@@ -130,8 +181,10 @@ local function register()
     desc = 'Run a project build task',
     nargs = '?',
     force = true,
-    complete = function()
-      return task_names
+    complete = function(lead)
+      return vim.tbl_filter(function(name)
+        return vim.startswith(name, lead)
+      end, task_choices())
     end,
   })
   vim.api.nvim_create_user_command('Rivet', dispatch, {
@@ -146,7 +199,12 @@ end
 -- again with options; options merge and commands are registered once.
 ---@param opts? rivet.Config
 function M.setup(opts)
-  context.config = vim.tbl_deep_extend('force', context.config, opts or {})
+  local config = vim.tbl_deep_extend('force', context.config, opts or {})
+  assert(
+    config.task_output == 'keep' or config.task_output == 'close-on-success',
+    "task_output must be 'keep' or 'close-on-success'"
+  )
+  context.config = config
   if not registered then
     register()
     registered = true

@@ -111,6 +111,10 @@ function M.tasks(root, preset, target_name, options)
     format = { cmake, '--build', binary, '--target', 'format' },
   }
   if selected.configuration then
+    if not selected.test_preset then
+      result.test[#result.test + 1] = '-C'
+      result.test[#result.test + 1] = selected.configuration
+    end
     result.format[#result.format + 1] = '--config'
     result.format[#result.format + 1] = selected.configuration
     if not selected.build_preset then
@@ -245,6 +249,29 @@ function M.compilation_database(raw, configuration)
   assert(#selected > 0, 'No compilation commands for configuration ' .. configuration)
   return json.encode(selected)
 end
+local function clangd_database(config)
+  local database
+  for line in ((config or '') .. '\n'):gmatch('(.-)\r?\n') do
+    local value = line:match('^%s*CompilationDatabase:%s*(.-)%s*$')
+    if value then
+      -- Conditional/multiple fragments remain custom configuration. Recognize
+      -- ordinary YAML quoting and comments without rewriting the user's file.
+      if database then
+        return nil
+      end
+      local quoted, tail = value:match("^'([^']*)'(.*)$")
+      if not quoted then
+        quoted, tail = value:match('^"([^"]*)"(.*)$')
+      end
+      if quoted and (tail:match('^%s*$') or tail:match('^%s*#')) then
+        database = quoted
+      else
+        database = (value:match('^(.-)%s+#') or value):gsub('%s+$', '')
+      end
+    end
+  end
+  return database
+end
 function M.sync_clangd(root, binary, configuration)
   local source = rt.confined(binary, 'compile_commands.json')
   local raw = rt.read(source)
@@ -279,7 +306,7 @@ function M.sync_clangd(root, binary, configuration)
     end
     assert(rt.read(config_path) == initial, '.clangd changed during configuration')
     rt.write(config_path, managed)
-  elseif not config or config:match('CompilationDatabase:%s*([^\r\n]+)') ~= '.cache/rivet' then
+  elseif clangd_database(config) ~= '.cache/rivet' then
     return false,
       'Custom .clangd left intact; point CompilationDatabase at .cache/rivet to follow the active preset'
   end
@@ -416,7 +443,12 @@ function M.set_cache(root, preset, entry, value)
   assert(rt.run({ 'mkdir', lock }).code == 0, 'Another Rivet write is active')
   local tmp = rt.join(lock, 'presets.json')
   local ok, err = pcall(function()
+    rt.chmod(lock, tonumber('700', 8))
+    local mode = before and rt.mode(destination)
     rt.write(tmp, json.encode(presets))
+    if mode then
+      rt.chmod(tmp, mode)
+    end
     assert(rt.read(destination) == before, 'Presets changed while editing; reopen the cache editor')
     assert(os.rename(tmp, destination))
   end)

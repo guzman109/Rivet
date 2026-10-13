@@ -33,6 +33,12 @@ assert(not runtime.executable(dir .. '/file'))
 assert(runtime.executable('sh') == shell.executable('sh'))
 assert(not runtime.executable('rivet-no-such-tool'))
 assert(runtime.cwd() == shell.cwd(), 'cwd differs')
+for _, mode in ipairs({ tonumber('600', 8), tonumber('755', 8), tonumber('444', 8) }) do
+  runtime.chmod(dir .. '/file', mode)
+  assert(runtime.mode(dir .. '/file') == mode and shell.mode(dir .. '/file') == mode)
+  shell.chmod(dir .. '/tool', mode)
+  assert(runtime.mode(dir .. '/tool') == mode and shell.mode(dir .. '/tool') == mode)
+end
 
 vim.fn.delete(dir, 'rf')
 print('Runtime filesystem checks passed')

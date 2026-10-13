@@ -1,0 +1,52 @@
+---
+title: Upgrade generated project files
+description: Review newer supplementary templates while preserving application code, local configuration edits, and native project ownership.
+section: Guides
+order: 26
+updated: '2026-10-13'
+---
+
+Updating the Rivet plugin makes its newer commands and templates available. To bring an existing Rivet-owned project’s supplementary files forward, run `:RivetUpgrade` or `:Rivet upgrade`. Review the complete diff before pressing `c`; `q` cancels.
+
+```sh
+rivet upgrade --root ./my_project --preview
+rivet upgrade --root ./my_project
+```
+
+Upgrade uses the project’s current `.rivet.json` choices. It does not recreate the project, overwrite application sources, or change the selected language, standard, runtime, or dependency pins.
+
+## What can be upgraded
+
+Each provider declares its supplementary templates. Depending on the language, these include editor/tool configuration, generated CMake helpers, preset templates, README/project guidance, and plugin help files. The review lists every proposed file and explains every skipped conflict.
+
+New projects record the generating Rivet version and supplementary template snapshots in `.rivet.json`:
+
+| Metadata | Purpose |
+| --- | --- |
+| `rivet_version` | Version that last created or reviewed the project’s supplementary templates |
+| `template_baselines` | Last adopted text for provider-declared supplementary files |
+| `generated` | Existing snapshots for manifest-managed build files |
+
+Application sources and tests are preserved. Machine-local settings such as `.rivet.local.json` and `CMakeUserPresets.json` remain local. Existing projects without `.rivet.json` retain native ownership; this command does not adopt their source lists.
+
+## How conflicts are handled
+
+A supplementary file can be updated when its current contents still match the recorded baseline. A missing supplementary file can be restored. A file already equal to the current template can have its baseline recorded without changing its contents.
+
+If you edited the file, Upgrade preserves it and reports the conflict. Its old baseline stays in the manifest, so a skipped customization is not silently adopted as a generated default. This covers customized `.clang-format`, `.clang-tidy`, `.clangd`, documentation, and hand-written CMake extensions. For example, a root `CMakeLists.txt` extended with an embedded Lua host keeps that include.
+
+Read the proposed new template and merge useful changes into a customized file manually. There is no blanket force-overwrite step. The final apply checks file snapshots again and rejects edits made since preview, unsafe paths, and modified Neovim buffers. Existing file permissions are preserved during replacement.
+
+## Older projects without snapshots
+
+Older manifests may not record supplementary provenance. Rivet does not assume every familiar filename is an untouched template. It adopts an existing file only when it exactly matches the current template or has a recorded managed snapshot; otherwise the review explains that provenance is unavailable and leaves it alone.
+
+Missing provider-declared supplementary files can still be created. Application files are not restored through this command. After reviewing and applying the upgrade, the manifest records the current Rivet version and the baselines that could safely be adopted.
+
+## Upgrade, repair, and legacy migration
+
+Use **Upgrade** to review current provider templates for an already Rivet-owned project.
+
+Use `:RivetRepair` or `rivet repair MANAGED_FILE` to restore a manifest-managed file to its last recorded generated contents. Repair preserves the edited copy under `.rivet-recovery/`; it restores a snapshot rather than upgrading to a new template.
+
+Use `:RivetMigrate` or `rivet migrate --preview` for a legacy Outset project containing `.outset.json`. Migration is a separate reviewed conversion to Rivet’s naming and manifest format. Run that workflow before using Rivet project operations; Upgrade does not replace the legacy migration step.

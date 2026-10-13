@@ -18,15 +18,18 @@ local function mask(text)
   local out, i = {}, 1
   while i <= #text do
     local rest = text:sub(i)
+    local raw_start, raw_end, delimiter = rest:find('^u8R"([^%s%(]*)%(')
+    if not raw_start then
+      raw_start, raw_end, delimiter = rest:find('^[uUL]?R"([^%s%(]*)%(')
+    end
     ---@type integer?
     local n = 1
     if rest:sub(1, 2) == '//' then
       n = (rest:find('\n', 1, true) or (#rest + 1)) - 1
     elseif rest:sub(1, 2) == '/*' then
       n = (rest:find('*/', 3, true) or (#rest - 1)) + 1
-    elseif rest:match('^R"[^%s%(]*%(') then
-      local delimiter = rest:match('^R"([^%s%(]*)%(')
-      local stop = rest:find(')' .. delimiter .. '"', 3 + #delimiter, true)
+    elseif raw_start then
+      local stop = rest:find(')' .. delimiter .. '"', raw_end + 1, true)
       n = stop and stop + #delimiter + 1 or #rest
     elseif rest:match('^%d') or rest:match('^%.%d') then
       -- Consume a preprocessing number, including C++ digit separators and
@@ -103,7 +106,7 @@ function M.plan(existing, opts, contents, render)
   for _, t in ipairs(spec.targets or {}) do
     for _, field in ipairs({ 'sources', 'headers', 'modules' }) do
       for _, path in ipairs(t[field] or {}) do
-        registered[path] = true
+        registered[path] = not t.external or nil
       end
     end
   end

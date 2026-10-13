@@ -74,6 +74,7 @@ local function run_workflow(root, name, preset, target_name, done)
           or (tasks.context and tasks.context.binaryDir or root),
         diagnostics = parser,
         render_line = renderer,
+        close_on_success = index == #workflow and context.config.task_output == 'close-on-success',
       }
     )
   end)
@@ -199,6 +200,16 @@ end
 function M.status()
   current_root()
   ui.notify(M.statusline())
+end
+
+function M.output()
+  return ui.show_output(current_root())
+end
+
+function M.stop()
+  if not ui.stop(current_root()) then
+    ui.notify('No task is running for this project.', vim.log.levels.WARN)
+  end
 end
 
 local function run_target(root, force, callback)

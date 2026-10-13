@@ -1,47 +1,64 @@
 ---
 title: Install and choose a language
-description: Load the development checkout, check your tools, and choose a first project for your language.
+description: Install Rivet through your plugin manager, check your tools, and choose a first project.
 section: Start here
 order: 1
-updated: '2026-10-10'
+updated: '2026-10-13'
 ---
 
 Rivet creates projects and runs their native tools from Neovim. Start with one language and one successful run; graphics SDKs, modules, and cluster hooks can come afterward. The CLI is optional.
 
-## Get the source
+## Install in Neovim
 
-Clone the [Rivet repository](https://github.com/guzman109/Rivet) into a folder you choose:
+Use Neovim 0.11+ on macOS or Linux. Your plugin manager downloads Rivet; you do not need to clone the repository manually or compile the plugin.
 
-```sh
-git clone https://github.com/guzman109/Rivet.git rivet.nvim
-cd rivet.nvim
-```
-
-This is the development version. The plugin runs inside Neovim; the optional CLI requires Lua or LuaJIT. No compiled standalone binary is distributed.
-
-The plugin folder must contain `lua/rivet/init.lua`, `plugin/rivet.lua`, and `bin/rivet`. Keep it in a location you control. Its directory may still be named `project-workbench.nvim`; the Lua module and commands are named Rivet regardless of that folder name.
-
-From the plugin folder, run `pwd` to get its absolute path. Substitute that path for `/path/to/rivet.nvim` below. This is the plugin's source folder, not the destination for your new projects.
-
-## Load it in Neovim
-
-Use Neovim 0.11 or newer on macOS or Linux. Add this to your Neovim configuration, then restart Neovim:
+With Neovim 0.12+'s built-in package manager, add this to your configuration:
 
 ```lua
-vim.opt.runtimepath:prepend('/path/to/rivet.nvim')
+vim.pack.add({
+  {
+    src = 'https://github.com/guzman109/Rivet',
+    name = 'rivet.nvim',
+    version = vim.version.range('0.1.x'),
+  },
+})
 require('rivet').setup()
 ```
 
-For lazy.nvim, use this plugin specification instead:
+With lazy.nvim on Neovim 0.11+, use this plugin specification:
 
 ```lua
 {
   'guzman109/Rivet',
   name = 'rivet.nvim',
   main = 'rivet',
+  version = '0.1.x',
   opts = {},
 }
 ```
+
+Restart Neovim after changing its configuration. The version range follows patch releases in the 0.1 series. Set a fixed `v0.1.0` tag to pin one release; use `main` to follow development. Both managers store the installed revision in a lockfile.
+
+## Update the plugin
+
+For `vim.pack`, run `:lua vim.pack.update({ 'rivet.nvim' })`, review the proposed update, save it with `:write`, then restart Neovim. For lazy.nvim, use `:Lazy update rivet.nvim`. Publication of a release does not automatically change an installed plugin.
+
+After updating Rivet, review `:RivetUpgrade` separately in each generated project. That command updates supplementary templates while preserving local edits; it does not update the plugin itself. See [project upgrades](/docs/upgrading/) and the [changelog](https://github.com/guzman109/Rivet/blob/main/CHANGELOG.md).
+
+## Local development
+
+To work on the plugin itself, clone the repository and add the checkout to the runtime path:
+
+```sh
+git clone https://github.com/guzman109/Rivet.git rivet.nvim
+```
+
+```lua
+vim.opt.runtimepath:prepend('/absolute/path/to/rivet.nvim')
+require('rivet').setup()
+```
+
+For the optional CLI, download and extract the source archive from [GitHub releases](https://github.com/guzman109/Rivet/releases), then add its `bin/` directory to your `PATH`. The launcher is `bin/rivet`; it needs Lua 5.1+ or LuaJIT. The archive contains portable source, not a compiled standalone binary. Keep the extracted folder intact so the launcher can find its Lua modules.
 
 Run `:RivetDoctor`. If Neovim says the command does not exist, check the checkout path and restart after loading the configuration. No separate Lua installation is needed inside Neovim. The [Neovim guide](/docs/neovim/) covers keys, commands, and previews; the [CLI quick start](/docs/getting-started/) explains the optional terminal interface.
 
@@ -53,6 +70,7 @@ Run `:RivetDoctor`. If Neovim says the command does not exist, check the checkou
 | C | CMake 3.30+, Ninja, C compiler supporting C17 (default), C11, or C23 | [C project walkthrough](/docs/c/#first-run-in-neovim) |
 | Python | Python 3.11+; uv only if you choose it | [Python walkthrough](/docs/python/#first-run-in-neovim) |
 | Rust | Cargo and rustc supporting edition 2024 (default) or 2021 | [Rust walkthrough](/docs/rust/#first-run-in-neovim) |
+| Lua | Lua 5.1+ or LuaJIT for portable apps; Neovim for plugin projects | [Lua and plugins](/docs/lua/) |
 | Swift | Swift 6.0+ with SwiftPM; Xcode for Apple application work | [SwiftPM walkthrough](/docs/swift/#first-run-in-neovim) |
 
 C++26 remains the default. The C++ tutorial uses named modules; conventional headers are also supported in C++17/20/23/26. For a simpler first build without module scanning, choose **Headers and source files** or use the [C++ CLI example](/docs/getting-started/#create-a-first-project).

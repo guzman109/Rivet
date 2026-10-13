@@ -26,64 +26,66 @@ function M.targets_cmake(spec)
   end
   local format_files = {}
   for _, target in ipairs(spec.targets) do
-    if target.test then
-      lines[#lines + 1] = 'if(BUILD_TESTING)'
-    end
-    if target.type == 'executable' then
-      lines[#lines + 1] = 'add_executable(' .. target.name .. ')'
-    else
-      lines[#lines + 1] = 'add_library(' .. target.name .. ' STATIC)'
-    end
-    lines[#lines + 1] = 'set_target_properties(' .. target.name .. ' PROPERTIES'
-    lines[#lines + 1] = '  CXX_STANDARD '
-      .. spec.standard
-      .. ' CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO'
-    lines[#lines + 1] = '  CXX_SCAN_FOR_MODULES '
-      .. ((spec.modules or spec.std_modules) and 'ON' or 'OFF')
-    if spec.std_modules then
-      lines[#lines + 1] = '  CXX_MODULE_STD ON'
-    end
-    lines[#lines + 1] = ')'
-    if #target.sources + #target.headers > 0 then
-      lines[#lines + 1] = 'target_sources(' .. target.name .. ' PRIVATE'
-      quoted_paths(lines, target.sources)
-      quoted_paths(lines, target.headers)
+    if not target.external then
+      if target.test then
+        lines[#lines + 1] = 'if(BUILD_TESTING)'
+      end
+      if target.type == 'executable' then
+        lines[#lines + 1] = 'add_executable(' .. target.name .. ')'
+      else
+        lines[#lines + 1] = 'add_library(' .. target.name .. ' STATIC)'
+      end
+      lines[#lines + 1] = 'set_target_properties(' .. target.name .. ' PROPERTIES'
+      lines[#lines + 1] = '  CXX_STANDARD '
+        .. spec.standard
+        .. ' CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO'
+      lines[#lines + 1] = '  CXX_SCAN_FOR_MODULES '
+        .. ((spec.modules or spec.std_modules) and 'ON' or 'OFF')
+      if spec.std_modules then
+        lines[#lines + 1] = '  CXX_MODULE_STD ON'
+      end
       lines[#lines + 1] = ')'
+      if #target.sources + #target.headers > 0 then
+        lines[#lines + 1] = 'target_sources(' .. target.name .. ' PRIVATE'
+        quoted_paths(lines, target.sources)
+        quoted_paths(lines, target.headers)
+        lines[#lines + 1] = ')'
+      end
+      if #target.modules > 0 then
+        lines[#lines + 1] = 'target_sources('
+          .. target.name
+          .. ' '
+          .. (target.type == 'static' and 'PUBLIC' or 'PRIVATE')
+        lines[#lines + 1] = '  FILE_SET cxx_modules TYPE CXX_MODULES'
+        lines[#lines + 1] = '  BASE_DIRS "${PROJECT_SOURCE_DIR}"'
+        lines[#lines + 1] = '  FILES'
+        quoted_paths(lines, target.modules, '    ')
+        lines[#lines + 1] = ')'
+      end
+      if #target.include_dirs > 0 then
+        lines[#lines + 1] = 'target_include_directories('
+          .. target.name
+          .. ' '
+          .. (target.type == 'static' and 'PUBLIC' or 'PRIVATE')
+        quoted_paths(lines, target.include_dirs)
+        lines[#lines + 1] = ')'
+      end
+      if #target.links > 0 then
+        lines[#lines + 1] = 'target_link_libraries('
+          .. target.name
+          .. ' '
+          .. (target.type == 'static' and 'PUBLIC' or 'PRIVATE')
+          .. ' '
+          .. table.concat(target.links, ' ')
+          .. ')'
+      end
+      lines[#lines + 1] = 'rivet_target_options(' .. target.name .. ')'
+      if target.test then
+        lines[#lines + 1] = 'add_test(NAME ' .. target.name .. ' COMMAND ' .. target.name .. ')'
+        lines[#lines + 1] = 'endif()'
+      end
+      lines[#lines + 1] = ''
     end
-    if #target.modules > 0 then
-      lines[#lines + 1] = 'target_sources('
-        .. target.name
-        .. ' '
-        .. (target.type == 'static' and 'PUBLIC' or 'PRIVATE')
-      lines[#lines + 1] = '  FILE_SET cxx_modules TYPE CXX_MODULES'
-      lines[#lines + 1] = '  BASE_DIRS "${PROJECT_SOURCE_DIR}"'
-      lines[#lines + 1] = '  FILES'
-      quoted_paths(lines, target.modules, '    ')
-      lines[#lines + 1] = ')'
-    end
-    if #target.include_dirs > 0 then
-      lines[#lines + 1] = 'target_include_directories('
-        .. target.name
-        .. ' '
-        .. (target.type == 'static' and 'PUBLIC' or 'PRIVATE')
-      quoted_paths(lines, target.include_dirs)
-      lines[#lines + 1] = ')'
-    end
-    if #target.links > 0 then
-      lines[#lines + 1] = 'target_link_libraries('
-        .. target.name
-        .. ' '
-        .. (target.type == 'static' and 'PUBLIC' or 'PRIVATE')
-        .. ' '
-        .. table.concat(target.links, ' ')
-        .. ')'
-    end
-    lines[#lines + 1] = 'rivet_target_options(' .. target.name .. ')'
-    if target.test then
-      lines[#lines + 1] = 'add_test(NAME ' .. target.name .. ' COMMAND ' .. target.name .. ')'
-      lines[#lines + 1] = 'endif()'
-    end
-    lines[#lines + 1] = ''
     for _, field in ipairs({ 'sources', 'modules', 'headers' }) do
       for _, filename in ipairs(target[field]) do
         spec_helpers.add_unique(format_files, filename)

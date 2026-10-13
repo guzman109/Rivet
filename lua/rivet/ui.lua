@@ -4,6 +4,9 @@ local M = {}
 M.diff = vim.text.diff or vim.diff
 local output_window
 local running = {}
+local task_outputs = {}
+local running_footer = 'Ctrl-C stop · q close view · :Rivet output reopen'
+local completed_footer = 'Press q or Enter to close · :Rivet output reopen'
 
 local function lines(value)
   if type(value) == 'table' then
@@ -283,8 +286,7 @@ function M.review(root, plan, apply, opts)
   end, vim.tbl_extend('force', opts or {}, { review = true }))
 end
 
-function M.output(title, content)
-  local buf = scratch('text')
+local function show_output(buf)
   if output_window and vim.api.nvim_win_is_valid(output_window) then
     vim.api.nvim_win_set_buf(output_window, buf)
   else
@@ -292,18 +294,79 @@ function M.output(title, content)
     output_window = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(output_window, buf)
   end
+  vim.api.nvim_set_current_win(output_window)
+end
+
+local function close_view(win, buf)
+  local closed = pcall(vim.api.nvim_win_close, win, true)
+  if not closed and vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == buf then
+    -- Neovim cannot close its last window. Return it to an editor buffer while
+    -- keeping the task buffer hidden and available to reopen.
+    local alternate = vim.fn.bufnr('#')
+    if
+      alternate < 0
+      or alternate == buf
+      or not vim.api.nvim_buf_is_valid(alternate)
+      or vim.api.nvim_buf_get_name(alternate):match('^rivet://')
+    then
+      alternate = vim.api.nvim_create_buf(true, false)
+    end
+    vim.api.nvim_win_set_buf(win, alternate)
+  end
+end
+
+local function close_output(buf)
+  for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+    close_view(win, buf)
+  end
+end
+
+function M.output(title, content, opts)
+  opts = opts or {}
+  local buf = scratch('text')
+  local previous = opts.root and task_outputs[opts.root]
+  if opts.root then
+    -- Another project's task can replace the shared window while this buffer
+    -- continues receiving output. Keep the latest output available to reopen.
+    vim.bo[buf].bufhidden = 'hide'
+    vim.b[buf].rivet_root = opts.root
+    task_outputs[opts.root] = buf
+  end
+  show_output(buf)
+  if previous and not running[opts.root] and vim.api.nvim_buf_is_valid(previous) then
+    vim.api.nvim_buf_delete(previous, { force = true })
+  end
   pcall(vim.api.nvim_buf_set_name, buf, 'rivet://' .. title:gsub('%s+', '-') .. '/' .. buf)
   replace(buf, content)
   vim.keymap.set('n', 'q', function()
-    if vim.api.nvim_buf_is_valid(buf) then
-      vim.api.nvim_buf_delete(buf, { force = true })
-    end
+    close_output(buf)
   end, { buffer = buf, desc = 'Close output' })
+  return buf
+end
+
+function M.show_output(root)
+  local buf = task_outputs[root]
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then
+    task_outputs[root] = nil
+    M.notify('No task output is available for this project.', vim.log.levels.WARN)
+    return
+  end
+  show_output(buf)
   return buf
 end
 
 function M.is_running(root)
   return running[root] ~= nil
+end
+
+function M.stop(root)
+  local token = running[root]
+  if not token or token.cancelled or not token.stop then
+    return false
+  end
+  token.cancelled = true
+  token.stop()
+  return true
 end
 
 function M.new_quickfix(root, title)
@@ -341,14 +404,22 @@ function M.run(root, argv, title, callback, opts)
     shown[#shown + 1] = vim.fn.shellescape(argument):gsub('\n', '\\n'):gsub('\r', '\\r')
   end
   local heading = { title, root, '$ ' .. table.concat(shown, ' '), '' }
-  local buf = M.output(title, vim.list_extend(vim.deepcopy(heading), { 'Running…' }))
-  vim.b[buf].rivet_root = root
-  vim.api.nvim_win_set_cursor(output_window, { #heading + 1, 0 })
+  local buf = M.output(
+    title,
+    vim.list_extend(vim.deepcopy(heading), { 'Running…', running_footer }),
+    { root = root }
+  )
+  vim.api.nvim_win_set_cursor(output_window, { #heading + 2, 0 })
   local qfid = opts.quickfix_id or M.new_quickfix(root, title)
   local token = {}
   running[root] = token
   local streams = { stdout = { raw = {}, partial = '' }, stderr = { raw = {}, partial = '' } }
   local queue, scheduled, finished, emitted = {}, false, false, 0
+  vim.keymap.set('n', '<CR>', function()
+    if finished then
+      close_output(buf)
+    end
+  end, { buffer = buf, desc = 'Close completed task output' })
   local function flush(final)
     scheduled = false
     local completed, diagnostics = {}, {}
@@ -416,6 +487,7 @@ function M.run(root, argv, title, callback, opts)
         status = 'Stopped (signal ' .. (final.signal or 0) .. ', exit ' .. final.code .. ')'
       end
       output[#output + 1] = status
+      output[#output + 1] = final and completed_footer or running_footer
       vim.bo[buf].modifiable = true
       vim.api.nvim_buf_set_lines(buf, #heading + emitted, -1, false, output)
       vim.bo[buf].modifiable = false
@@ -471,6 +543,15 @@ function M.run(root, argv, title, callback, opts)
           vim.log.levels.ERROR
         )
       end
+      if
+        success
+        and opts.close_on_success
+        and output_window
+        and vim.api.nvim_win_is_valid(output_window)
+        and vim.api.nvim_win_get_buf(output_window) == buf
+      then
+        close_view(output_window, buf)
+      end
       if callback then
         callback(success, process)
       end
@@ -479,26 +560,28 @@ function M.run(root, argv, title, callback, opts)
   if not ok then
     finished = true
     running[root] = nil
-    replace(buf, vim.list_extend(heading, { tostring(result) }))
+    replace(buf, vim.list_extend(heading, { tostring(result), completed_footer }))
     M.notify(tostring(result), vim.log.levels.ERROR)
     if callback then
       callback(false)
     end
     return
   end
+  token.stop = function()
+    if vim.fn.has('win32') == 1 then
+      vim.system({ 'taskkill', '/PID', tostring(result.pid), '/T', '/F' })
+    else
+      vim.uv.kill(-result.pid, 15)
+      -- A child can ignore TERM or outlive its parent and keep output pipes
+      -- open. The group remains ours until its last process has exited.
+      vim.defer_fn(function()
+        vim.uv.kill(-result.pid, 9)
+      end, 1000)
+    end
+  end
   vim.keymap.set('n', '<C-c>', function()
-    if running[root] == token and not token.cancelled then
-      token.cancelled = true
-      if vim.fn.has('win32') == 1 then
-        vim.system({ 'taskkill', '/PID', tostring(result.pid), '/T', '/F' })
-      else
-        vim.uv.kill(-result.pid, 15)
-        -- A child can ignore TERM or outlive its parent and keep output pipes
-        -- open. The group remains ours until its last process has exited.
-        vim.defer_fn(function()
-          vim.uv.kill(-result.pid, 9)
-        end, 1000)
-      end
+    if running[root] == token then
+      M.stop(root)
     end
   end, { buffer = buf, desc = 'Stop the running project task' })
   return result

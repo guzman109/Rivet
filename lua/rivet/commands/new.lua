@@ -155,6 +155,7 @@ function M.new()
                 rust = 'main.rs',
                 swift = 'main.swift',
                 c = 'main.c',
+                lua = 'main.lua',
               })[spec.language] or 'main.cpp',
               project = spec.name,
               language = spec.language,

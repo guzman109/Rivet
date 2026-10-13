@@ -147,6 +147,28 @@ function M.write(path, text)
   local closed, close_error = f:close()
   assert(ok and closed, why or close_error or 'Write failed')
 end
+function M.mode(path)
+  if uv then
+    local stat, err = uv.fs_stat(path)
+    assert(stat, err)
+    return stat.mode % 4096
+  end
+  local result = M.run({ 'stat', '-c', '%a', path })
+  if result.code ~= 0 then
+    result = M.run({ 'stat', '-f', '%Lp', path })
+  end
+  assert(result.code == 0, result.stderr)
+  return assert(tonumber(result.stdout:match('^%s*([0-7]+)%s*$'), 8), 'Invalid file mode')
+end
+function M.chmod(path, mode)
+  if uv then
+    local ok, err = uv.fs_chmod(path, mode)
+    assert(ok, err)
+  else
+    local result = M.run({ 'chmod', string.format('%o', mode), path })
+    assert(result.code == 0, result.stderr)
+  end
+end
 function M.safe_relative(path)
   assert(
     type(path) == 'string' and path ~= '' and not path:find('[%z\r\n\\]') and path:sub(1, 1) ~= '/',

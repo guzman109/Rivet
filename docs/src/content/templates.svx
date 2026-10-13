@@ -3,20 +3,21 @@ title: Files and targets
 description: Choose file and target operations for each language, with detailed C++ templates and CMake registration.
 section: Guides
 order: 12
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
-Use `:RivetFile` or `rivet file` inside a generated project. Every operation previews its files before Neovim applies them. The build-system changes depend on the provider:
+Use `:RivetFile` or `rivet file` in a project or an ordinary folder. The editor asks for the language first, then the file arrangement. A file in the project’s primary language uses its provider’s build registration; other languages create tracked files without changing the host build. Use `--language` for the same choice in the CLI. Every operation previews its files before Neovim applies them. The build-system changes depend on the provider:
 
 | Provider | File addition | Target addition |
 | --- | --- | --- |
 | C++ | Templates below, with CMake registration | Executable or static library |
-| C | `.c` source, with CMake registration | Executable or static library |
+| C | Source, header, or pair, with CMake registration | Executable or static library |
 | Python | `.py` module in the package; import it where needed | Add an entry point in `pyproject.toml` yourself |
 | Rust | `.rs` module; add its `mod` declaration yourself | Additional executable under `src/bin/` |
+| Lua | Reusable module or runnable script | Library or script executable |
 | Swift | `.swift` source in a recorded target directory; leaves `Package.swift` intact | Executable or library through a reviewed package-manifest update |
 
-The sections below cover **C++**. Follow [C](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/), or [SwiftPM](/docs/swift/) for their source conventions and native ownership limits. Existing projects without `.rivet.json` can run tasks, but generated mutations require an Rivet manifest.
+The sections below cover **C++**. Follow [C](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/), or [SwiftPM](/docs/swift/) for their source conventions and native ownership limits. Existing projects without `.rivet.json` can create files through the generic templates without generating a manifest or rewriting their build. Register these files with the native build yourself. See [Lua](/docs/lua/) for applications, Neovim plugins, scripting, and an optional embedded-runtime example.
 
 ## Choose a template
 
@@ -27,8 +28,10 @@ The sections below cover **C++**. Follow [C](/docs/c/), [Python](/docs/python/),
 | `pair` | Matching source and header files, with the source including its header. |
 | `class` | A class declaration in a header and constructor definition in a source. |
 | `module` | A `.cppm` interface that can contain declarations and definitions, registered in a CMake module file set. |
+| `module_pair` | A `.cppm` interface with an exported function declaration and a `.cpp` implementation in the same owning target. |
 | `module_impl` | A `.cpp` implementation for an existing named module. |
 | `c_source` | A C17 `.c` source in the C++ project; enables C for the build. |
+| `c_pair` | Matching `.c` and `.h` files with C ABI guards; enables C in the host build. |
 | `c_header` | A `.h` header with `extern "C"` guards for a C ABI. |
 
 The source/header choice is explicit: select `pair` when you want both. Module templates are available only when the project's own named modules are enabled. Standard-library imports alone do not enable named project modules.
@@ -57,7 +60,16 @@ Header guards use the project's `pragma` or `ifndef` preference. Named module un
 
 New sources, headers, and module units also inherit the project's optional [file comment header](/docs/comment-headers/), with their own filename. `:RivetHeader` changes one file; `:RivetHeaderDefaults` changes what future templates use.
 
-## Add a module, then an optional implementation
+## Add a module pair or a separate implementation
+
+Choose **Module interface + implementation** to create both together:
+
+```sh
+rivet file src/memory/pool --kind module_pair \
+  --module engine.memory.pool --target engine_core
+```
+
+
 
 The first command creates a usable interface skeleton. Put function bodies there for a single-file module. Run the second command only if you want to define those functions in a separate implementation unit. Do not define the same function in both files.
 
@@ -81,3 +93,14 @@ rivet target viewer --kind app
 ```
 
 The first command creates a static library and links the existing `engine` target to it. The second creates an independent executable. Adding a target does not automatically move existing files or infer application dependencies. Use the final CMake review to inspect the relationships, and keep custom build extensions in `CMakeLists.txt`.
+
+## Files in another language
+
+```sh
+rivet file tools/analyze --language python --kind source --preview
+rivet file scripts/prepare --language lua --kind script --preview
+rivet file lua/engine/helper --language lua --kind module --preview
+rivet file notes.txt --language text --kind source --preview
+```
+
+Mixed C files in a C++ project can join an existing CMake target with `--language c --kind pair --target engine_core`. Other foreign files are recorded for later move/remove operations, without adding a new build target. They are yours to connect to the host application. An explicit path is relative to the project root; Lua bare module names use `lua/<project>/` and scripts use `scripts/`.

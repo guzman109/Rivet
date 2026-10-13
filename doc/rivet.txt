@@ -57,6 +57,10 @@ projects_dir      string or nil (default nil)
 default_preset    string (default 'debug')
                   Preset chosen before a project has a remembered selection.
 
+task_output       string (default 'keep')
+                  'close-on-success' closes successful final task output.
+                  Failures stay visible; |:RivetOutput| reopens output.
+
 profiles          table (default {})
                   Named creation choices offered by |:RivetNew|, for example
                   `{ ['C++26 modules'] = { language = 'cpp', standard = 26,`
@@ -98,13 +102,30 @@ Creating projects ~
                   (`:Rivet identity`)
 
 Changing a project ~
+                                                                *:RivetConfig*
+:RivetConfig [tool]
+                  Edit clang-format, clang-tidy, or clangd settings. Common
+                  keys explain types and values; review the complete diff.
+                  Open YAML for arbitrary keys and advanced configuration.
+                  (`:Rivet config [tool]`)
+
+                                                               *:RivetUpgrade*
+:RivetUpgrade     Review supplementary files from the installed Rivet version.
+                  Update unchanged templates and restore missing files;
+                  preserve local edits, application sources, and tests.
+                  Legacy projects adopt only verifiable template baselines.
+                  Update the plugin separately, then run this command.
+                  (`:Rivet upgrade`)
+
                                                                   *:RivetFile*
-:RivetFile        Add a source, header, pair, class, module interface, or
-                  module implementation and register it. (`:Rivet file`)
+:RivetFile        Choose a language and source, header/pair, class, module/
+                  pair, or Lua module/script. Lua in C/C++/Rust also offers
+                  an embedded-runtime example. Review all files before saving.
+                  (`:Rivet file`)
 
                                                                  *:RivetFiles*
-:RivetFiles       Review moving, renaming, or removing a registered C/C++
-                  file. (`:Rivet files`)
+:RivetFiles       Review moving, renaming, or removing a registered file
+                  where supported. (`:Rivet files`)
 
                                                           *:RivetModuleRename*
 :RivetModuleRename
@@ -198,9 +219,15 @@ A plan is refused if its files changed after it was generated.
 
 For CMake, Build configures first; Test and Run configure and build first. A
 failed or stopped step ends the workflow. Other providers use their native
-tools (Cargo, SwiftPM, Python); Python's Build checks syntax.
+tools (Cargo, SwiftPM, Python, Lua); Python and Lua Build check syntax.
+Lua supports applications, libraries, and Neovim plugins with explicit
+lua/luajit/neovim runtime choices. Optional StyLua/Luacheck are not installed
+automatically. Embedded examples review Lua dependency and host build changes.
 
-Output streams into a reused window:
+Output streams into a reused window. Each project retains its latest output:
+  <CR>            Close completed output.
+  :RivetOutput    Reopen this project's retained output. (|:RivetOutput|)
+  :RivetStop      Stop its running task while output is hidden. (|:RivetStop|)
   <C-c>           Stop the task's process group, including children.
   q               Close the output window without stopping the task.
 
@@ -212,6 +239,14 @@ Preset, targets, and the last task are remembered per project under
 
 ==============================================================================
 6. LUA API                                                         *rivet-api*
+
+                                                                *:RivetOutput*
+:RivetOutput     Reopen the current project's latest task output.
+                  (`:Rivet output`)
+
+                                                                  *:RivetStop*
+:RivetStop       Stop the current project's running task process group.
+                  (`:Rivet stop`)
 
                                                                *rivet.setup()*
 require('rivet').setup({opts})

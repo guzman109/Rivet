@@ -144,6 +144,7 @@ function M.file(spec)
   local templates = {
     { id = 'c_source', label = 'C source for mixed C/C++' },
     { id = 'c_header', label = 'C header with extern C guards' },
+    { id = 'c_pair', label = 'C source + header with extern C guards' },
     {
       id = 'source',
       label = 'Source file',
@@ -163,6 +164,11 @@ function M.file(spec)
   }
   if spec.modules then
     templates[#templates + 1] = {
+      id = 'module_pair',
+      label = 'Module interface + implementation',
+      preview = 'export module project.renderer;\nexport namespace project { int renderer(); }\n\n// Separate .cpp:\nmodule project.renderer;\nnamespace project { int renderer() { return 42; } }',
+    }
+    templates[#templates + 1] = {
       id = 'module',
       label = 'Module interface',
       preview = 'export module project.renderer;\n\nexport namespace project {\n  // Exported declarations and definitions.\n}',
@@ -181,6 +187,12 @@ function M.file(spec)
   table.sort(modules, function(a, b)
     return a.id < b.id
   end)
+  local targets = {}
+  for _, target in ipairs(spec.targets) do
+    if not target.external then
+      targets[#targets + 1] = target
+    end
+  end
   return {
     choice('kind', 'New C++ file', templates),
     {
@@ -197,7 +209,7 @@ function M.file(spec)
     {
       key = 'target',
       title = 'Target',
-      items = spec.targets,
+      items = targets,
       when = function(o)
         return o.kind ~= 'module_impl'
       end,
@@ -216,7 +228,7 @@ function M.file(spec)
         return spec.name .. '.' .. o.name:gsub('/', '.')
       end,
       when = function(o)
-        return o.kind == 'module'
+        return o.kind == 'module' or o.kind == 'module_pair'
       end,
     },
   }
@@ -224,7 +236,9 @@ end
 function M.target(spec)
   local links = { { id = '', label = 'Leave unlinked for now' } }
   for _, target in ipairs(spec.targets or {}) do
-    links[#links + 1] = { id = target.name, label = 'Link into ' .. target.name }
+    if not target.external then
+      links[#links + 1] = { id = target.name, label = 'Link into ' .. target.name }
+    end
   end
   return {
     choice('kind', 'New target', {
@@ -238,6 +252,12 @@ function M.target(spec)
   }
 end
 function M.dependency(spec)
+  local targets = {}
+  for _, target in ipairs(spec.targets) do
+    if not target.external then
+      targets[#targets + 1] = target
+    end
+  end
   return {
     { key = 'name', title = 'CPM package name', input = true, default = 'fmt' },
     {
@@ -257,7 +277,7 @@ function M.dependency(spec)
       input = true,
       default = 'fmt::fmt',
     },
-    choice('link_to', 'Target to link', spec.targets),
+    choice('link_to', 'Target to link', targets),
   }
 end
 return M

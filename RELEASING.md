@@ -1,6 +1,6 @@
 # Release and deployment
 
-The current version is `0.1.0-dev`. Publishing the source repository does not create a versioned release or deploy the website. Rivet.nvim's code is MIT licensed, copyright 2026 Carlos Guzman; bundled license templates and website font/theme notices retain their upstream terms.
+The current version is `0.1.0`. Publishing the source repository does not create a versioned release or deploy the website. Rivet.nvim's code is MIT licensed, copyright 2026 Carlos Guzman; bundled license templates and website font/theme notices retain their upstream terms.
 
 ## Source publication
 
@@ -10,10 +10,10 @@ The plugin requires Neovim 0.11+. The optional CLI is `bin/rivet`, a relocatable
 
 ## Before tagging a release
 
-1. Run the unit tests under Lua and LuaJIT, `tests/licenses.lua`, `tests/migration.lua`, all `tests/nvim*.lua` scripts, `stylua --check lua tests bin plugin`, and `lua-language-server --check .` (see the README for `VIMRUNTIME`).
+1. Run the unit tests and feature suites listed in README.md under Lua and LuaJIT, `tests/licenses.lua`, `tests/migration.lua`, all `tests/nvim*.lua` scripts, `stylua --check lua tests bin plugin`, and `lua-language-server --check .` (see the README for `VIMRUNTIME`).
 2. Run `tests/integration.lua` with the documented CMake/compiler combination. Run `tests/batches.lua` for installed native tools and available graphics SDKs; record skipped cases rather than describing them as passed.
 3. Run `bun install --frozen-lockfile`, `bun run verify`, and `bun run cf:check` in `docs/`.
-4. Update `lua/rivet/version.lua` and document the version's changes and known platform limitations. Inspect the complete staged source and CI result before making a version tag.
+4. Update `lua/rivet/version.lua`, add a dated entry to `CHANGELOG.md`, and document the version's changes and known platform limitations. Inspect the complete staged source and CI result before making a version tag.
 5. Create a source archive with `python3 scripts/package-release.py`. It includes tracked source files and produces a SHA-256 checksum under ignored `dist/`. Extract it in a fresh directory and test `bin/rivet --version`, project creation, and loading the plugin before uploading it as a release asset.
 
 The archive builder uses tracked files, including staged files; it is a packaging tool, not a substitute for committing and reviewing a release. It excludes local dependency caches because those paths are not tracked.
@@ -32,3 +32,29 @@ The Outset rename shims are deprecated and print a notice when used. Remove them
 The site remains SvelteKit, TypeScript, and mdsvex with the static adapter. Bun provides local development and builds. Wrangler serves and deploys the prerendered files as Cloudflare Worker static assets. The configuration uses Worker name `rivet-docs`; it has no account ID, token, or custom domain committed.
 
 Authenticate with `bun x --no-install wrangler login` from `docs/`, verify the intended account, then run `bun run deploy`. Choose the production hostname separately; no Keen Eyes domain is assumed. See [docs/README.md](docs/README.md) for local preview, dry-run, and CI secret configuration. A GitHub push only runs checks; it does not deploy to Cloudflare.
+
+## Publish with GitHub CLI
+
+Plugin managers use the Git tag, not the uploaded archive. Use an immutable semantic-version tag such as `v0.1.0`, matching `lua/rivet/version.lua`. The GitHub release adds changelog notes and optional source/checksum downloads. Users install through `vim.pack` or lazy.nvim; they do not need a manual checkout.
+
+After committing and merging the verified release changes, confirm GitHub CI passes for that exact `main` commit. Push the annotated tag, then create a draft with the verified archive and notes:
+
+```sh
+git tag -a v0.1.0 -m 'Rivet.nvim 0.1.0'
+git push origin v0.1.0
+gh release create v0.1.0 \
+  dist/rivet.nvim-0.1.0.tar.gz \
+  dist/rivet.nvim-0.1.0.tar.gz.sha256 \
+  --verify-tag --title 'Rivet.nvim 0.1.0' \
+  --notes-file /path/to/release-notes.md --draft
+```
+
+Inspect the draft assets and notes, then publish:
+
+```sh
+gh release edit v0.1.0 --draft=false --latest
+```
+
+For a release candidate, use a prerelease version such as `0.1.0-rc.1` consistently in the version file and tag, and pass `--prerelease` when creating it. Do not move a published release tag. Fixes belong in a new patch version.
+
+Document minimum Neovim versions, language-tool requirements, known limits, and how to update existing projects. No separate marketplace registration or compiled plugin asset is needed. Neovim 0.12+ `vim.pack` users can select `vim.version.range('0.1.x')`; lazy.nvim accepts `version = '0.1.x'`. A branch choice of `main` follows development commits rather than tagged releases.

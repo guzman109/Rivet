@@ -27,7 +27,7 @@ function M.questions(kind, spec, context)
   return require('rivet.languages.cpp_questions')[kind](spec, context)
 end
 
-function M.formatter(spec, filename, tools)
+function M.formatter(spec, filename, tools, context)
   if
     tools.clang_format
     and (
@@ -39,7 +39,12 @@ function M.formatter(spec, filename, tools)
       or filename:match('%.cu$')
     )
   then
-    return { tools.clang_format, '--style=' .. spec.style, '--assume-filename=' .. filename }
+    local style = context
+        and context.existing
+        and require('rivet.runtime').read(context.root .. '/.clang-format')
+        and ('file:' .. context.root .. '/.clang-format')
+      or spec.style
+    return { tools.clang_format, '--style=' .. style, '--assume-filename=' .. filename }
   end
 end
 
@@ -118,17 +123,44 @@ M.normalize = spec_helpers.normalize
 local function target_for(spec, name)
   if name == nil then
     for _, target in ipairs(spec.targets) do
-      if target.type == 'static' and not target.test then
+      if target.type == 'static' and not target.test and not target.external then
         return target
       end
     end
   end
   for _, target in ipairs(spec.targets) do
     if target.name == name then
+      assert(
+        not target.external,
+        'This embedding target is defined in its standalone CMake include; edit the example and include together'
+      )
       return target
     end
   end
   error('unknown target: ' .. tostring(name), 2)
+end
+
+function M.upgrade_files(existing)
+  local spec = M.normalize(existing)
+  local fresh = copy(spec)
+  fresh.files, fresh.targets, fresh.module_names, fresh.dependencies = {}, {}, {}, {}
+  local defaults, result = M.plan(fresh).files, {}
+  for path, content in pairs(defaults) do
+    if
+      path == 'CMakeLists.txt'
+      or path == 'CMakePresets.json'
+      or path == 'README.md'
+      or path == 'AGENTS.md'
+      or path == 'justfile'
+      or path:match('^%.')
+      or path:match('^cmake/')
+    then
+      result[path] = content
+    end
+  end
+  result['cmake/RivetTargets.cmake'] = targets_cmake(spec)
+  result['cmake/Dependencies.cmake'] = dependencies_cmake(spec)
+  return result
 end
 
 local function add_file(spec, files, filename, content, target, field)
@@ -527,29 +559,47 @@ end
 function M.add_file(existing, opts)
   local spec = M.normalize(existing)
   local target = target_for(spec, opts.target)
-  local kind = enum(
-    opts.kind or 'source',
-    { 'source', 'c_source', 'c_header', 'header', 'pair', 'class', 'module', 'module_impl' },
-    'file kind'
-  )
+  local kind = enum(opts.kind or 'source', {
+    'source',
+    'c_source',
+    'c_header',
+    'c_pair',
+    'header',
+    'pair',
+    'class',
+    'module',
+    'module_pair',
+    'module_impl',
+  }, 'file kind')
   local raw = path(assert(opts.name, 'file name is required'))
-  raw = raw:gsub('%.cppm$', ''):gsub('%.cpp$', ''):gsub('%.hpp$', '')
+  raw = raw
+    :gsub('%.cppm$', '')
+    :gsub('%.cpp$', '')
+    :gsub('%.cc$', '')
+    :gsub('%.cxx$', '')
+    :gsub('%.hpp$', '')
+    :gsub('%.c$', '')
+    :gsub('%.h$', '')
   local basename = identifier(raw:match('([^/]+)$'), 'file name')
   local stem = raw:find('/', 1, true) and raw
     or (target.source_dir == '.' and raw or target.source_dir .. '/' .. raw)
   local files, body = {}, ''
-  if kind == 'c_source' or kind == 'c_header' then
-    if kind == 'c_source' then
+  if kind == 'c_source' or kind == 'c_header' or kind == 'c_pair' then
+    if kind == 'c_source' or kind == 'c_pair' then
       add_file(
         spec,
         files,
         stem .. '.c',
-        'int ' .. basename .. '(void) { return 42; }\n',
+        (kind == 'c_pair' and '#include "' .. basename .. '.h"\n\n' or '')
+          .. 'int '
+          .. basename
+          .. '(void) { return 42; }\n',
         target,
         'sources'
       )
       spec.c_standard = spec.c_standard or 17
-    else
+    end
+    if kind == 'c_header' or kind == 'c_pair' then
       add_file(
         spec,
         files,
@@ -561,19 +611,36 @@ function M.add_file(existing, opts)
         'headers'
       )
     end
-  elseif kind == 'module' or kind == 'module_impl' then
+  elseif kind == 'module' or kind == 'module_pair' or kind == 'module_impl' then
     assert(spec.modules, 'module templates require a modules project')
     local mod = module_name(
-      opts.module or (kind == 'module' and spec.name .. '.' .. raw:gsub('/', '.') or '')
+      opts.module or (kind ~= 'module_impl' and spec.name .. '.' .. raw:gsub('/', '.') or '')
     )
-    if kind == 'module' then
+    if kind == 'module' or kind == 'module_pair' then
       assert(not spec.module_names[mod], 'module already exists: ' .. mod)
       body = module_start(spec, mod, true)
         .. 'export namespace '
         .. spec.name
-        .. ' {\n// Add exported declarations and definitions here.\n}\n'
+        .. ' {\n'
+        .. (kind == 'module_pair' and ('int ' .. basename .. '();\n') or '// Add exported declarations and definitions here.\n')
+        .. '}\n'
       add_file(spec, files, stem .. '.cppm', body, target, 'modules')
       spec.module_names[mod] = { target = target.name, path = stem .. '.cppm' }
+      if kind == 'module_pair' then
+        add_file(
+          spec,
+          files,
+          stem .. '.cpp',
+          module_start(spec, mod, false)
+            .. 'namespace '
+            .. spec.name
+            .. ' {\nint '
+            .. basename
+            .. '() { return 42; }\n}\n',
+          target,
+          'sources'
+        )
+      end
     else
       local owner = assert(spec.module_names[mod], 'unknown module: ' .. mod)
       assert(

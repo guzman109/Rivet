@@ -42,6 +42,13 @@ require('rivet').setup()`;
 			title: 'C with a clear build.',
 			text: 'Strict C projects and ABI headers for C++ interoperability.',
 			tag: 'C'
+		},
+		{
+			number: '06',
+			slug: 'lua',
+			title: 'Lua from scripts to plugins.',
+			text: 'Portable modules, Neovim plugins, and optional embedded hosts.',
+			tag: 'LUA'
 		}
 	];
 </script>
@@ -50,7 +57,7 @@ require('rivet').setup()`;
 	<title>Rivet — projects, from the first file</title>
 	<meta
 		name="description"
-		content="Create, preview, and work on C++, C, Python, Rust, and Swift projects from Neovim. Guides for native tools, HPC, graphics, and project templates."
+		content="Create, preview, and work on C++, C, Python, Rust, Swift, and Lua projects from Neovim. Guides for native tools, HPC, graphics, and project templates."
 	/>
 </svelte:head>
 

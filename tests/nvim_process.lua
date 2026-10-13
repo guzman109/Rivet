@@ -4,6 +4,15 @@ local script = debug.getinfo(1, 'S').source:sub(2)
 local root = script:match('^(.*)/tests/nvim_process%.lua$') or '.'
 vim.opt.runtimepath:prepend(root)
 local ui = require('rivet.ui')
+local function press(buf, lhs)
+  for _, key in ipairs(vim.api.nvim_buf_get_keymap(buf, 'n')) do
+    if key.lhs:lower() == lhs:lower() then
+      key.callback()
+      return
+    end
+  end
+  error('Missing output key: ' .. lhs)
+end
 local done
 ui.run(temporary_root, { '/bin/echo', 'task output' }, 'smoke', function(ok, result)
   assert(ok and result.stdout == 'task output\n')
@@ -16,6 +25,7 @@ assert(
   'process did not finish'
 )
 local count = #vim.api.nvim_list_wins()
+local first_output = vim.api.nvim_get_current_buf()
 done = false
 ui.run(temporary_root, { '/bin/echo', 'second output' }, 'second', function(ok)
   assert(ok)
@@ -25,8 +35,17 @@ assert(vim.wait(3000, function()
   return done
 end))
 assert(#vim.api.nvim_list_wins() == count, 'task windows accumulated')
+assert(not vim.api.nvim_buf_is_valid(first_output), 'obsolete task output accumulated')
 local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
 assert(text:find('second output', 1, true) and text:find('Exit status: 0', 1, true))
+assert(
+  text:find('Press q or Enter to close · :Rivet output reopen', 1, true),
+  'Completion lacks close hints'
+)
+local completed_output = vim.api.nvim_get_current_buf()
+press(completed_output, '<CR>')
+assert(vim.api.nvim_buf_is_valid(completed_output) and #vim.fn.win_findbuf(completed_output) == 0)
+assert(ui.show_output(temporary_root) == completed_output, 'Enter erased completed task output')
 local errors = {}
 ui.notify = function(message)
   errors[#errors + 1] = message
@@ -40,6 +59,12 @@ assert(vim.wait(3000, function()
   return done
 end))
 assert(#errors > 0)
+assert(
+  table
+    .concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
+    :find('Press q or Enter to close', 1, true),
+  'Launch failure lacks close hints'
+)
 
 -- Output is visible before completion, including chunks without a newline.
 done = false
@@ -58,6 +83,16 @@ local process = ui.run(
   end
 )
 local output = vim.api.nvim_get_current_buf()
+assert(
+  table
+    .concat(vim.api.nvim_buf_get_lines(output, 0, -1, false), '\n')
+    :find('Ctrl-C stop · q close view · :Rivet output reopen', 1, true),
+  'Running output lacks close and cancellation hints'
+)
+local streaming_window = vim.api.nvim_get_current_win()
+press(output, '<CR>')
+assert(vim.api.nvim_win_is_valid(streaming_window), 'Enter closed running task output')
+assert(vim.api.nvim_win_get_buf(streaming_window) == output and ui.is_running(temporary_root))
 local qfid = vim.fn.getqflist({ id = 0 }).id
 assert(
   vim.wait(400, function()
@@ -112,22 +147,113 @@ assert(
   #items == 2 and vim.api.nvim_buf_get_name(items[2].bufnr) == temporary_root .. '/src/main.cpp'
 )
 
+-- Each project retains its output while the shared view follows another task.
+-- Closing that view must still allow reopening and cancelling either project.
+local projects = vim.fn.tempname()
+local project_a, project_b = projects .. '/a', projects .. '/b'
+vim.fn.mkdir(project_a, 'p')
+vim.fn.mkdir(project_b, 'p')
+local a_done, b_done
+ui.run(
+  project_a,
+  {
+    '/bin/sh',
+    '-c',
+    "printf 'project a early\\n'; sleep 0.3; printf 'project-a.cpp:9: warning: a warning\\nproject a done\\n'",
+  },
+  'project a',
+  function(ok)
+    assert(ok, 'another project interrupted project a')
+    a_done = true
+  end,
+  { close_on_success = true }
+)
+local a_output = vim.api.nvim_get_current_buf()
+local a_qfid = vim.fn.getqflist({ id = 0 }).id
+assert(vim.wait(1000, function()
+  return table
+    .concat(vim.api.nvim_buf_get_lines(a_output, 0, -1, false), '\n')
+    :find('project a early', 1, true)
+end))
+ui.run(
+  project_b,
+  {
+    '/bin/sh',
+    '-c',
+    "printf 'project b early\\nproject-b.cpp:11: error: b error\\n'; sleep 5",
+  },
+  'project b',
+  function(ok)
+    assert(not ok, 'hidden project b was not cancelled')
+    b_done = true
+  end
+)
+local b_output = vim.api.nvim_get_current_buf()
+local b_window = vim.api.nvim_get_current_win()
+local b_qfid = vim.fn.getqflist({ id = 0 }).id
+assert(vim.api.nvim_buf_is_valid(a_output), 'another project wiped running output')
+assert(vim.wait(1000, function()
+  return table
+    .concat(vim.api.nvim_buf_get_lines(b_output, 0, -1, false), '\n')
+    :find('project b early', 1, true)
+end))
+assert(vim.wait(3000, function()
+  return a_done
+end))
+assert(
+  vim.api.nvim_win_is_valid(b_window) and vim.api.nvim_win_get_buf(b_window) == b_output,
+  'Hidden successful task closed another project output'
+)
+press(b_output, 'q')
+assert(
+  vim.api.nvim_buf_is_valid(b_output) and #vim.fn.win_findbuf(b_output) == 0,
+  'q erased task output'
+)
+assert(ui.is_running(project_b), 'q stopped the task')
+assert(ui.show_output(project_a) == a_output, 'project a output could not be reopened')
+text = table.concat(vim.api.nvim_buf_get_lines(a_output, 0, -1, false), '\n')
+assert(text:find('project a done\nExit status: 0', 1, true), 'hidden output stopped streaming')
+assert(vim.fn.getqflist({ id = b_qfid, items = 0 }).items[1].lnum == 11)
+assert(vim.fn.getqflist({ id = a_qfid, items = 0 }).items[1].lnum == 9)
+assert(
+  vim.fn.getqflist({ id = 0 }).id == b_qfid,
+  'another project replaced the selected quickfix list'
+)
+assert(ui.stop(project_b), 'hidden task could not be cancelled')
+assert(not ui.stop(project_b), 'task accepted cancellation twice')
+assert(vim.wait(3000, function()
+  return b_done
+end))
+assert(ui.show_output(project_b) == b_output, 'closed project output could not be reopened')
+text = table.concat(vim.api.nvim_buf_get_lines(b_output, 0, -1, false), '\n')
+assert(text:find('project b early', 1, true) and text:find('Stopped (signal ', 1, true))
+assert(not ui.stop(project_b), 'completed task accepted cancellation')
+local replacement_done
+ui.run(project_a, { '/bin/echo', 'replacement' }, 'project a replacement', function(ok)
+  assert(ok)
+  replacement_done = true
+end)
+assert(not vim.api.nvim_buf_is_valid(a_output), 'completed project output accumulated')
+assert(vim.api.nvim_buf_is_valid(b_output), 'replacing project a output erased project b output')
+assert(vim.wait(3000, function()
+  return replacement_done
+end))
+vim.fn.delete(projects, 'rf')
+
 done = false
 process = ui.run(temporary_root, { '/bin/sleep', '5' }, 'cancel', function(ok)
   assert(not ok)
   done = true
-end)
-for _, key in ipairs(vim.api.nvim_buf_get_keymap(0, 'n')) do
-  if key.lhs == '<C-C>' or key.lhs == '<C-c>' then
-    key.callback()
-  end
-end
+end, { close_on_success = true })
+local cancelled_output = vim.api.nvim_get_current_buf()
+press(cancelled_output, '<C-c>')
 assert(
   vim.wait(3000, function()
     return done
   end),
   'Ctrl-C did not stop the task'
 )
+assert(#vim.fn.win_findbuf(cancelled_output) > 0, 'Cancellation closed failed output')
 
 done = false
 ui.run(
@@ -161,6 +287,65 @@ assert(
 text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
 assert(text:find('first line\nsecond line', 1, true), 'Multiline output missing')
 
+-- Automatic close keeps output accessible and preserves the user's editor focus.
+done = false
+ui.run(
+  temporary_root,
+  { '/bin/echo', 'successful automatic close' },
+  'automatic close',
+  function(ok)
+    assert(ok)
+    done = true
+  end,
+  { close_on_success = true }
+)
+local automatic_output = vim.api.nvim_get_current_buf()
+local automatic_window = vim.api.nvim_get_current_win()
+local editor_window
+for _, win in ipairs(vim.api.nvim_list_wins()) do
+  if win ~= automatic_window then
+    editor_window = win
+    break
+  end
+end
+assert(editor_window, 'No editor window for focus regression')
+vim.api.nvim_set_current_win(editor_window)
+local editor_buffer = vim.api.nvim_get_current_buf()
+assert(vim.wait(3000, function()
+  return done
+end))
+assert(
+  not vim.api.nvim_win_is_valid(automatic_window),
+  'Successful output did not close automatically'
+)
+assert(
+  vim.api.nvim_get_current_win() == editor_window
+    and vim.api.nvim_get_current_buf() == editor_buffer
+)
+assert(ui.show_output(temporary_root) == automatic_output, 'Automatic close erased task output')
+
+done = false
+ui.run(temporary_root, { '/bin/sh', '-c', 'exit 3' }, 'failed automatic close', function(ok)
+  assert(not ok)
+  done = true
+end, { close_on_success = true })
+local failed_output = vim.api.nvim_get_current_buf()
+assert(vim.wait(3000, function()
+  return done
+end))
+assert(#vim.fn.win_findbuf(failed_output) > 0, 'Failure output closed automatically')
+local failed_window = vim.api.nvim_get_current_win()
+for _, win in ipairs(vim.api.nvim_list_wins()) do
+  if win ~= failed_window then
+    vim.api.nvim_win_close(win, true)
+  end
+end
+press(failed_output, 'q')
+assert(vim.api.nvim_get_current_buf() ~= failed_output, 'q left output in the last window')
+assert(ui.show_output(temporary_root) == failed_output)
+press(failed_output, '<CR>')
+assert(vim.api.nvim_get_current_buf() ~= failed_output, 'Enter left output in the last window')
+
 -- A TERM-resistant child must die even after the immediate parent exits.
 local pidfile = vim.fn.tempname()
 local python = vim.fn.exepath('python3')
@@ -180,11 +365,7 @@ assert(vim.wait(3000, function()
 end))
 local pid = tonumber(vim.fn.readfile(pidfile)[1])
 assert(pid and vim.uv.kill(pid, 0) == 0, 'Child did not start')
-for _, key in ipairs(vim.api.nvim_buf_get_keymap(0, 'n')) do
-  if key.lhs:lower() == '<c-c>' then
-    key.callback()
-  end
-end
+press(vim.api.nvim_get_current_buf(), '<C-c>')
 assert(
   vim.wait(4000, function()
     local dead = vim.uv.kill(pid, 0) == nil

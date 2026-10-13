@@ -6,7 +6,7 @@ order: 2
 updated: '2026-10-12'
 ---
 
-Rivet is a Neovim plugin for creating C/C++, Python, Rust, and SwiftPM projects, adding files from templates, and running native tasks. It requires Neovim 0.11 or newer and the Rivet plugin. Start with [installation and language selection](/docs/start-here/) if you have not loaded the plugin yet.
+Rivet is a Neovim plugin for creating C/C++, Python, Rust, SwiftPM, and Lua projects, adding files from templates, and running native tasks. It requires Neovim 0.11 or newer and the Rivet plugin. Start with [installation and language selection](/docs/start-here/) if you have not loaded the plugin yet.
 
 Run `:RivetNew` after loading the plugin to create your first project. Follow the [C++](/docs/first-project/), [C](/docs/c/#first-run-in-neovim), [Python](/docs/python/#first-run-in-neovim), [Rust](/docs/rust/#first-run-in-neovim), or [SwiftPM](/docs/swift/#first-run-in-neovim) walkthrough for your language.
 
@@ -88,8 +88,12 @@ Every command is also a subcommand of `:Rivet`, with Tab completion: `:Rivet fil
 
 | Command | Action |
 | --- | --- |
-| `:RivetFile` | Preview and add a source, header, pair, class, or module unit. |
-| `:RivetFiles` | Review a registered C/C++ file move, rename, or removal. |
+| `:RivetFile` | Choose a language and source, header/pair, class, module/pair, or Lua module/script/embedding example. |
+| `:RivetFiles` | Review a registered file move, rename, or removal where supported. |
+| `:RivetConfig [tool]` | Edit common clang tool settings with explanations and a reviewed diff. |
+| `:RivetUpgrade` | Review supplementary templates from the installed Rivet version. |
+| `:RivetOutput` | Reopen the current project’s retained task output. |
+| `:RivetStop` | Stop its running task even while output is hidden. |
 | `:RivetModuleRename` | Review a C++ module identity change and registered imports. |
 | `:RivetRepair` | Back up an edited managed file and restore its generated snapshot. |
 | `:RivetRunOptions` | Review runtime arguments, environment, parallel settings, and hooks. |
@@ -130,3 +134,13 @@ Use [C interoperability](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/)
 ## Existing Outset setup
 
 Use `require('rivet').setup(...)` and `:Rivet…` commands in new configuration. The old `require('outset')` entry point still loads Rivet, shows a deprecation warning, and will be removed in 0.3.0. Open a project with `.outset.json` and run `:RivetMigrate` to review its conversion and backups before applying. Reconfigure afterward. Saved editor profiles and task selections are read from their former Outset location until they are next saved.
+
+## Close and reopen task output
+
+Running output displays `Ctrl-C stop · q close view · :Rivet output reopen`. Completed output displays `Press q or Enter to close`. Closing the view keeps output available and leaves a running process active; use Ctrl-C or `:RivetStop` to stop it. Each project retains its own latest output.
+
+```lua
+require("rivet").setup({ task_output = "close-on-success" })
+```
+
+This optional setting closes only successful final workflow output. Failed or cancelled tasks stay visible. `:RivetOutput` reopens retained output.

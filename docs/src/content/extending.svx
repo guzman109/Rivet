@@ -106,3 +106,7 @@ A full integration also needs task routing and editor questions. C/C++ use the C
 Generated `AGENTS.md`, README, and manifest files communicate project conventions to an assistant. Rivet does not call an AI service. An assistant can inspect those files, invoke the same previewable operations, and leave custom CMake inside the documented extension points.
 
 Use the repository's core tests for provider behavior and temporary-project integration tests for actual builds. [CMake and tasks](/docs/cmake/) describes the current C++ boundary.
+
+## Supplementary template upgrades
+
+Providers may implement `upgrade_files(spec)` returning a pure path-to-content map of current configuration, build-support, and documentation templates. Exclude application sources and tests, local settings, and `.rivet.json`. New projects record `rivet_version` and `template_baselines` after formatting; reviewed upgrades compare files against those snapshots and preserve local edits. Managed mutations advance their recorded snapshots. Do not regenerate source skeletons during upgrade. Existing sources and target registration must remain consistent with the supplied specification.

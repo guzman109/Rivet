@@ -1,0 +1,132 @@
+---
+title: Lua projects and embedding
+description: Create Lua applications, modules, and Neovim plugins, or add reviewed Lua scripting examples to C, C++, and Rust hosts.
+section: Guides
+order: 24
+updated: '2026-10-13'
+---
+
+Choose **Lua** in `:RivetNew` to create an application, reusable library, or Neovim plugin. Choose Lua in `:RivetFile` to add a script or module to an existing project. In C, C++, and Rust projects, the file wizard also offers an embedded runtime example with separate build and dependency changes to review.
+
+## Create a Lua project
+
+1. Run `:RivetNew`, select Lua, and choose the destination and project name.
+2. Select **Application**, **Library**, or **Neovim plugin**. Applications and libraries can use Lua, LuaJIT, or Neovim; plugins use Neovim.
+3. Review the generated files and press `c` to apply, or `q` to cancel.
+4. Run `:RivetTask check`, then `:RivetTask test`. Applications also offer `:RivetTask run` and print `42`.
+
+The equivalent CLI commands are:
+
+```sh
+rivet new lua_demo --language lua --kind app --runtime lua
+rivet check --root lua_demo
+rivet test --root lua_demo
+rivet run --root lua_demo
+```
+
+An application contains `main.lua`, `lua/lua_demo/init.lua`, and `tests/test.lua`. A library provides the reusable module and tests. Modules return a table; use `require("lua_demo")` to load the initial module. Generated script entry points resolve the project's `lua/` directory relative to their own file, so they also work when launched by absolute path from another directory.
+
+## Runtime and tooling
+
+The selected runtime is recorded in `.rivet.json`. `lua` and `luajit` use their command from PATH; `neovim` uses a clean headless Neovim process. An executable override belongs in local run options:
+
+```json
+{
+  "lua": "/path/to/lua",
+  "args": [],
+  "env": {}
+}
+```
+
+The override must match the selected runtime: use a Neovim executable for `neovim`, for example. Debug and Release currently use the same Lua operations. Templates use portable Lua 5.1 syntax; adjust `.luarc.json` and `.luacheckrc` deliberately when targeting newer language features. The actual parser used by Check is the selected interpreter.
+
+| Task | Behavior |
+| --- | --- |
+| Configure | Report the selected runtime version |
+| Check / Build | Compile registered Lua files to check syntax, without executing their bodies |
+| Test | Execute the recorded test script, normally `tests/test.lua` |
+| Run | Execute the selected application script with configured arguments |
+| Format | Run optional StyLua over Lua source files |
+| Lint | Run optional Luacheck over Lua source files |
+
+Check does not produce a packaged binary or install dependencies. Syntax checking clears Lua startup-file environment hooks; Run and Test execute project code normally. Errors with file locations appear in quickfix. `:RivetDoctor` reports the runtime and optional formatter/linter availability. Install StyLua, Luacheck, and runtime dependencies explicitly through your chosen tools; Rivet does not manage LuaRocks packages.
+
+## Neovim plugins
+
+```sh
+rivet new greeting_plugin --language lua --kind plugin --runtime neovim
+rivet test --root greeting_plugin
+```
+
+The plugin starter includes `lua/greeting_plugin/init.lua`, `plugin/greeting_plugin.lua`, a help file, and a headless test. Its module exposes `setup()` and a greeting function; the plugin file registers a user command. Add the project to Neovim's runtimepath through your normal plugin setup, then configure it:
+
+```lua
+require('greeting_plugin').setup({ greeting = 'Hello' })
+```
+
+Plugin tests load the generated plugin explicitly in a clean Neovim. They check the command, module behavior, and supplied setup options. Creating the project does not install or activate the plugin in your normal editor session.
+
+## Add scripts or modules to another language
+
+Run `:RivetFile`, select Lua, then choose the intended operation:
+
+| Choice | Files and integration |
+| --- | --- |
+| Lua script | Executable Lua source; use an interpreter or an existing host integration |
+| Reusable Lua module | A file returning a module table; load it with `require` |
+| Lua + host example | A separate C/C++ executable or Rust example, plus reviewed runtime dependency configuration |
+
+Script and module choices create files without linking a Lua runtime into the host. A bare script name goes under `scripts/`; a bare module name goes under `lua/<project>/`. A path containing `/` is project-relative. For example:
+
+```sh
+rivet file scripts/automation.lua --language lua --kind script --preview
+rivet file scripts/automation.lua --language lua --kind script
+rivet file lua/helpers.lua --language lua --kind module
+```
+
+In a Lua-owned project, adding a script also registers a runnable application target. In another language's project, host tasks remain with that language's native provider. Existing projects can receive these files without creating a Rivet manifest or adopting their native source lists.
+
+## Embed Lua in C or C++
+
+In a C/C++ project, choose **Lua + host example** and an example name such as `automation`. Review includes:
+
+- `scripts/automation.lua`, which calls a host-provided addition function;
+- `examples/automation/main.c` or `main.cpp`, which creates a Lua state and reports script failures;
+- `cmake/Lua_automation.cmake`, which finds Lua and defines `automation_lua`;
+- an appended include in the existing root `CMakeLists.txt`.
+
+```sh
+rivet file automation --language lua --kind embedded --preview
+rivet file automation --language lua --kind embedded
+rivet run --target automation_lua
+```
+
+Existing application entry points remain intact. The example requires Lua development headers and libraries that CMake can find; creation downloads nothing. CMake's [FindLua module](https://cmake.org/cmake/help/latest/module/FindLua.html) supplies the include and link settings.
+
+The default script path points to this source checkout and works from any working directory. Pass another script as the executable's first argument when deploying. Edit the host and its CMake include together when changing source paths. The example has separate target ownership, so generic source-list mutations do not rewrite its build definition. An external CMake project remains external; configure it before selecting the new executable in the target picker.
+
+## Embed Lua in Rust
+
+The same embedded choice creates `examples/automation.rs`, a Lua script, and a reviewed `[dependencies.mlua]` entry in the selected package's `Cargo.toml`:
+
+```toml
+[dependencies.mlua]
+version = "=0.12.2"
+features = ["lua54", "vendored"]
+```
+
+Run the example through Cargo:
+
+```sh
+cargo run --example automation
+```
+
+For a generated workspace, the example belongs to its generated member:
+
+```sh
+cargo run --manifest-path crates/my_project/Cargo.toml --example automation
+```
+
+For a virtual external workspace, open the desired package directly or supply its project-relative package directory with `--target crates/my_package` when creating the example. The example uses `include_str!` to embed the script at compile time; rebuild after changing it.
+
+Creation performs no download. A subsequent Cargo build may fetch the pinned binding and dependencies, and `vendored` builds the selected Lua runtime from source. The [mlua feature documentation](https://github.com/mlua-rs/mlua#feature-flags) describes the Lua version and vendoring choices. If a manifest already mentions mlua, Rivet refuses to guess how its version, aliases, or Lua features should be merged; adapt that existing configuration manually.

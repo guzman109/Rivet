@@ -57,7 +57,14 @@ function M.root(start)
       return path
     end
     if not native then
-      for _, marker in ipairs({ 'Cargo.toml', 'pyproject.toml', 'Package.swift' }) do
+      for _, marker in ipairs({
+        'Cargo.toml',
+        'pyproject.toml',
+        'Package.swift',
+        '.luarc.json',
+        '.luacheckrc',
+        '.stylua.toml',
+      }) do
         if rt.read(rt.join(path, marker)) then
           native = path
           break
@@ -96,6 +103,9 @@ function M.inspect(root)
     { 'Cargo.toml', 'rust' },
     { 'pyproject.toml', 'python' },
     { 'Package.swift', 'swift' },
+    { '.luarc.json', 'lua' },
+    { '.luacheckrc', 'lua' },
+    { '.stylua.toml', 'lua' },
   }) do
     if rt.read(rt.confined(root, entry[1])) then
       return { language = entry[2], name = root:match('[^/]+$'), external = true }
@@ -124,7 +134,7 @@ local function prepare(root, plan, previous, manifest_before)
     for path, content in pairs(plan.files) do
       local argv = type(content) == 'string'
         and not (plan.replace and plan.replace[path])
-        and provider.formatter(plan.spec, path, tools)
+        and provider.formatter(plan.spec, path, tools, { root = root, existing = previous ~= nil })
       if argv then
         local r = rt.run(argv, { stdin = content })
         assert(r.code == 0, 'Formatting failed: ' .. r.stderr)
@@ -168,6 +178,18 @@ local function prepare(root, plan, previous, manifest_before)
     plan.expected[path] = existing or false
     if managed then
       plan.spec.generated[path] = content
+      if plan.spec.template_baselines and plan.spec.template_baselines[path] then
+        plan.spec.template_baselines[path] = content
+      end
+    end
+  end
+  if not previous then
+    plan.spec.rivet_version = require('rivet.version')
+    plan.spec.template_baselines = {}
+    for path in pairs(provider.upgrade_files and provider.upgrade_files(plan.spec) or {}) do
+      if type(plan.files[path]) == 'string' then
+        plan.spec.template_baselines[path] = plan.files[path]
+      end
     end
   end
   plan.files['.rivet.json'] = json.encode(plan.spec)
@@ -199,6 +221,28 @@ function M.plan(opts, root)
   return plan
 end
 function M.file_plan(root, opts)
+  opts = opts or {}
+  if opts.kind == 'embedded' then
+    assert(opts.language == 'lua', 'Embedded starters use --language lua')
+    return require('rivet.embedding').plan(root, opts)
+  end
+  if not rt.read(rt.confined(root, '.rivet.json')) then
+    local ok, spec = pcall(M.inspect, root)
+    spec = ok and spec or { name = 'project', language = opts.language or 'cpp', external = true }
+    local language = opts.language
+      or require('rivet.file_templates').infer(opts.name)
+      or spec.language
+    local plan = require('rivet.file_templates').plan(spec, opts, language)
+    plan.root, plan.expected = canonical(root), {}
+    for path in pairs(plan.files) do
+      assert(
+        not rt.exists(rt.confined(plan.root, path)),
+        'Refusing to overwrite existing file: ' .. path
+      )
+      plan.expected[path] = false
+    end
+    return plan
+  end
   local spec, raw = M.load(root)
   return prepare(root, model.add_file(spec, opts), spec, raw)
 end
@@ -223,14 +267,22 @@ end
 function M.lifecycle_plan(root, options)
   local spec, raw = M.load(root)
   local provider = model.provider(spec)
-  assert(
-    provider.lifecycle,
-    'This provider does not own source lists; use its native tools for file changes'
-  )
   local contents = {}
   for _, path in ipairs(spec.files or {}) do
     contents[path] = rt.read(rt.confined(root, path))
   end
+  if (spec.file_languages or {})[options.from] then
+    return prepare(
+      root,
+      require('rivet.file_templates').lifecycle(spec, options, contents),
+      spec,
+      raw
+    )
+  end
+  assert(
+    provider.lifecycle,
+    'This provider does not own source lists; use its native tools for file changes'
+  )
   return prepare(root, provider.lifecycle(spec, options, contents), spec, raw)
 end
 function M.repair_plan(root, path)
@@ -303,8 +355,18 @@ function M.apply(root, plan)
     locked.code == 0,
     'Another Rivet write is active (.rivet-lock); if interrupted, remove that empty directory before retrying'
   )
-  local staged, committed = {}, {}
+  local staged, committed, modes, sources = {}, {}, {}, {}
+  for source, destination in pairs(plan.moves or {}) do
+    sources[destination] = source
+  end
   local ok, err = pcall(function()
+    -- A staged file can contain private settings before its own mode is restored.
+    rt.chmod(lock, tonumber('700', 8))
+    for _, path in ipairs(paths) do
+      if plan.expected[path] ~= false then
+        modes[path] = rt.mode(rt.confined(root, path))
+      end
+    end
     for index, path in ipairs(paths) do
       local full = rt.confined(root, path)
       assert(
@@ -314,8 +376,12 @@ function M.apply(root, plan)
       rt.mkdir(rt.dirname(full))
       local temporary = rt.join(lock, tostring(index))
       if plan.files[path] ~= false then
-        rt.write(temporary, plan.files[path])
         staged[path] = temporary
+        rt.write(temporary, plan.files[path])
+        local mode = modes[sources[path] or path]
+        if mode then
+          rt.chmod(temporary, mode)
+        end
       end
     end
     for _, path in ipairs(paths) do
@@ -336,7 +402,10 @@ function M.apply(root, plan)
       if plan.expected[path] == false then
         os.remove(full)
       else
-        rt.write(full, plan.expected[path])
+        local temporary = rt.join(lock, 'restore-' .. i)
+        rt.write(temporary, plan.expected[path])
+        rt.chmod(temporary, modes[path])
+        assert(os.rename(temporary, full))
       end
     end
   end

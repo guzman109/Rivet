@@ -7,6 +7,7 @@ local languages = {
   python = 'rivet.languages.python',
   rust = 'rivet.languages.rust',
   swift = 'rivet.languages.swift',
+  lua = 'rivet.languages.lua',
 }
 
 function M.supports(language)
@@ -99,7 +100,25 @@ function M.plan(opts)
   return plan
 end
 function M.add_file(spec, opts)
-  return adapter(spec).add_file(spec, opts or {})
+  opts = opts or {}
+  local language = opts.language or require('rivet.file_templates').infer(opts.name)
+  if language and language ~= (spec.language or 'cpp') then
+    if spec.language == 'cpp' and language == 'c' then
+      local options = require('rivet.languages.cpp_spec').copy(opts)
+      options.kind = ({
+        source = 'c_source',
+        header = 'c_header',
+        pair = 'c_pair',
+        c_source = 'c_source',
+        c_header = 'c_header',
+        c_pair = 'c_pair',
+      })[opts.kind or 'source']
+      assert(options.kind, 'Choose source, header, or pair for C files in a C++ project')
+      return adapter(spec).add_file(spec, options)
+    end
+    return require('rivet.file_templates').plan(spec, opts, language)
+  end
+  return adapter(spec).add_file(spec, opts)
 end
 function M.add_target(spec, opts)
   return adapter(spec).add_target(spec, opts or {})

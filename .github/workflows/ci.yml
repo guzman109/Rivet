@@ -37,7 +37,7 @@ jobs:
       - name: Install Linux tools
         run: |
           apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates lua5.4 luajit neovim make ninja-build clang clang-tools clang-format libc++-21-dev libc++abi-21-dev python3 python3-venv
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates lua5.4 liblua5.4-dev luajit neovim make ninja-build clang clang-tools clang-format libc++-21-dev libc++abi-21-dev pkg-config python3 python3-venv
           python3 -m venv /opt/rivet-tools
           /opt/rivet-tools/bin/pip install cmake==4.4.4
           echo /opt/rivet-tools/bin >> "$GITHUB_PATH"
@@ -51,6 +51,11 @@ jobs:
           lua tests/licenses.lua
           lua tests/migration.lua
           lua tests/integration.lua
+          for runtime in lua luajit; do
+            for test in tests/lua_provider.lua tests/native_regressions.lua tests/file_templates.lua tests/tool_config.lua tests/upgrades.lua tests/embedding.lua tests/cli_features.lua; do
+              "$runtime" "$test"
+            done
+          done
           RIVET_TEST_FILTER='native Python' lua tests/batches.lua
       - name: Neovim checks
         env:
@@ -77,6 +82,11 @@ jobs:
           lua tests/licenses.lua
           lua tests/migration.lua
           lua tests/integration.lua
+          for runtime in lua luajit; do
+            for test in tests/lua_provider.lua tests/native_regressions.lua tests/file_templates.lua tests/tool_config.lua tests/upgrades.lua tests/embedding.lua tests/cli_features.lua; do
+              "$runtime" "$test"
+            done
+          done
       - name: Neovim checks
         env:
           XDG_STATE_HOME: ${{ runner.temp }}/rivet-nvim-state

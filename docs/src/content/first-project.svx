@@ -10,20 +10,7 @@ This C++26 walkthrough creates an application named `engine`, adds a small singl
 
 ## Load Rivet and check the tools
 
-Use Neovim 0.11 or newer and [obtain the development checkout](/docs/start-here/#get-the-source). Add this to your Neovim configuration if Rivet is not already loaded, replacing the checkout path with its actual location. An older checkout folder may still be named `project-workbench.nvim`.
-
-```lua
-vim.opt.runtimepath:prepend(
-  vim.fn.expand('/path/to/rivet.nvim')
-)
-require('rivet').setup({
-  default_preset = 'debug',
-})
-```
-
-Restart Neovim and run `:RivetDoctor`. This walkthrough needs CMake 3.30 or newer, Ninja 1.11 or newer, and a compiler that accepts C++26 and supports named modules with dependency scanning. On macOS, select your Homebrew LLVM `clang++` together with its matching `clang-scan-deps`. `clang-format` is optional but enables real formatting previews. See the [tool requirements](/docs/getting-started/#check-the-tools) for more context.
-
-Doctor checks availability. The first successful configure and build is the check that your selected toolchain works together.
+Use Neovim 0.11 or newer and [install Rivet through your plugin manager](/docs/start-here/#install-in-neovim). Restart after changing the configuration. Run `:RivetDoctor` to check the CMake/compiler tools used by this project. This walkthrough needs CMake 3.30+, Ninja 1.11+, and a C++26 compiler with named-module dependency scanning. On macOS, select Homebrew LLVM `clang++` and its matching `clang-scan-deps`; `clang-format` is optional. See [tool requirements](/docs/getting-started/#check-the-tools) for details.
 
 ## Create and personalize
 

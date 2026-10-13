@@ -3,7 +3,7 @@
 local ui = require('rivet.ui')
 local M = {}
 ---@type rivet.Config
-M.config = { projects_dir = nil, default_preset = 'debug', profiles = {} }
+M.config = { projects_dir = nil, default_preset = 'debug', profiles = {}, task_output = 'keep' }
 ---@type string?
 M.active_root = nil
 

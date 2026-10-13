@@ -1,6 +1,6 @@
 # Rivet.nvim
 
-Create C++, C, Python, Rust, and SwiftPM projects from Neovim or the shell,
+Create C++, C, Python, Rust, SwiftPM, and Lua projects from Neovim or the shell,
 add files and targets from templates, and run each project's native build
 tools. Every change is previewed as a complete file plan before anything is
 written.
@@ -33,6 +33,19 @@ and the narrower requirements of `import std;`.
 
 ## Install
 
+With Neovim 0.12+'s built-in package manager:
+
+```lua
+vim.pack.add({
+  {
+    src = 'https://github.com/guzman109/Rivet',
+    name = 'rivet.nvim',
+    version = vim.version.range('0.1.x'),
+  },
+})
+require('rivet').setup()
+```
+
 With [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
@@ -40,9 +53,18 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
   'guzman109/Rivet',
   name = 'rivet.nvim',
   main = 'rivet',
+  version = '0.1.x',
   opts = { default_preset = 'debug' },
 }
 ```
+
+Your package manager downloads Rivet; no manual clone or compilation is needed.
+To update with `vim.pack`, run
+`:lua vim.pack.update({ 'rivet.nvim' })`, review and save the update, and restart
+Neovim. lazy.nvim users can use `:Lazy update rivet.nvim`. Use a fixed tag to
+pin a release or `main` to follow development. After updating Rivet, review
+`:RivetUpgrade` in each project to update its supplementary files separately.
+See [CHANGELOG.md](CHANGELOG.md) for release changes.
 
 Or add a checkout to your runtime path:
 
@@ -57,14 +79,20 @@ In Neovim, run `:Rivet new`, answer the questions while comparing previews,
 and press `c` on the final review to create the project. Then:
 
 ```vim
-:Rivet file          " add a source, header, class, or module
+:Rivet file          " choose language, source/header pair, module pair, or Lua script
 :Rivet task build    " configure and build; errors go to quickfix
 :Rivet task run      " build and run the application
+:Rivet config        " edit tool settings with explanations and a reviewed diff
+:Rivet upgrade       " review updated supplementary templates
+:Rivet output        " reopen task output
+:Rivet stop          " stop the current project task
 :Rivet doctor        " check the toolchain this project actually uses
 ```
 
 Every subcommand also exists as a `:Rivet…` command (`:RivetNew`,
 `:RivetTask build`, …). `:help rivet` lists them all with their keys.
+
+Task output shows its controls: `q` closes the view, Enter closes completed output, and Ctrl-C stops a running task. Set `task_output = 'close-on-success'` in `setup()` to close successful output automatically; reopen it with `:Rivet output`.
 
 From the shell, add `bin/` to your `PATH`:
 
@@ -90,10 +118,11 @@ documentation site ([development guide](docs/README.md)):
   [styles and layouts](docs/src/content/styles-layouts.svx), and
   [files and targets](docs/src/content/templates.svx)
 - Languages: [C](docs/src/content/c.svx), [Python](docs/src/content/python.svx),
-  [Rust](docs/src/content/rust.svx), [SwiftPM](docs/src/content/swift.svx);
+  [Rust](docs/src/content/rust.svx), [SwiftPM](docs/src/content/swift.svx),
+  [Lua and Neovim plugins](docs/src/content/lua.svx);
   workloads: [HPC](docs/src/content/hpc.svx),
   [graphics](docs/src/content/graphics.svx)
-- [Existing projects](docs/src/content/existing-projects.svx),
+- [Project upgrades](docs/src/content/upgrading.svx), [Existing projects](docs/src/content/existing-projects.svx),
   [troubleshooting](docs/src/content/troubleshooting.svx), and
   [writing a language provider](docs/src/content/extending.svx)
 
@@ -102,6 +131,7 @@ documentation site ([development guide](docs/README.md)):
 ```sh
 lua tests/run.lua && luajit tests/run.lua
 lua tests/licenses.lua && lua tests/migration.lua
+for t in tests/lua_provider.lua tests/native_regressions.lua tests/file_templates.lua tests/tool_config.lua tests/upgrades.lua tests/embedding.lua tests/cli_features.lua; do lua "$t"; done
 lua tests/integration.lua      # builds real projects with installed toolchains
 for t in tests/nvim*.lua; do nvim --headless -u NONE -i NONE -l "$t"; done
 stylua --check lua tests bin plugin

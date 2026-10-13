@@ -735,6 +735,21 @@ import old.name;
   has(text, "1'000")
 end)
 
+test('module refactoring preserves encoding-prefixed raw string payloads', function()
+  for _, prefix in ipairs({ 'R', 'u8R', 'uR', 'UR', 'LR' }) do
+    local literal = 'auto text = ' .. prefix .. '"tag(example " import old.name; )tag";'
+    local text, count = require('rivet.lifecycle').module_references(
+      'export module old.name;\n' .. literal .. '\nimport old.name;\n',
+      'old.name',
+      'new.name'
+    )
+    eq(count, 2)
+    has(text, literal)
+    has(text, 'export module new.name;')
+    has(text, '\nimport new.name;')
+  end
+end)
+
 test('ordinary application JSON stays visible in native task output', function()
   local diagnostics = require('rivet.native_diagnostics')
   local render = diagnostics.render

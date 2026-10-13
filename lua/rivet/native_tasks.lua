@@ -1,4 +1,6 @@
 local rt, json = require('rivet.runtime'), require('rivet.json')
+local python_tool =
+  rt.absolute(debug.getinfo(1, 'S').source:sub(2):gsub('native_tasks%.lua$', 'python_tool.py'))
 local M = {
   task_names = {
     'configure',
@@ -296,6 +298,17 @@ function M.tasks(root, preset, target, options)
       end
       return a
     end
+    local function tool(module, ...)
+      return py(
+        '-E',
+        '-P',
+        python_tool,
+        module,
+        root,
+        not spec.external and rt.join(root, 'src') or '',
+        ...
+      )
+    end
     if uv then
       result.configure =
         { command('uv'), 'sync', '--project', root, '--inexact', '--no-python-downloads' }
@@ -313,13 +326,13 @@ function M.tasks(root, preset, target, options)
       result.configure = { python, '-m', 'venv', rt.confined(root, '.venv') }
     end
     result.build =
-      py('-m', 'compileall', '-q', rt.join(root, rt.is_dir(rt.join(root, 'src')) and 'src' or '.'))
+      tool('compileall', '-q', rt.join(root, rt.is_dir(rt.join(root, 'src')) and 'src' or '.'))
     result.check = result.build
-    result.test = local_options.test_runner == 'pytest' and py('-m', 'pytest', root)
-      or py('-m', 'unittest', 'discover', '-s', rt.join(root, 'tests'), '-v')
-    result.format = py('-m', 'ruff', 'format', root)
-    result.lint = py('-m', 'ruff', 'check', root)
-    result.package = uv and { command('uv'), 'build', '--project', root } or py('-m', 'build', root)
+    result.test = local_options.test_runner == 'pytest' and tool('pytest', root)
+      or tool('unittest', 'discover', '-s', rt.join(root, 'tests'), '-v')
+    result.format = tool('ruff', 'format', root)
+    result.lint = tool('ruff', 'check', root)
+    result.package = uv and { command('uv'), 'build', '--project', root } or tool('build', root)
     local module = local_options.python_module
       or (not spec.external and spec.kind == 'app' and spec.name)
     if module then

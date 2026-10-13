@@ -27,6 +27,7 @@ function M.validate(value)
     cancel = true,
     job_id = true,
     python = true,
+    lua = true,
     python_module = true,
     test_runner = true,
   }
@@ -46,7 +47,7 @@ function M.validate(value)
       )
     end
   end
-  for _, key in ipairs({ 'cwd', 'job_id', 'python', 'python_module', 'test_runner' }) do
+  for _, key in ipairs({ 'cwd', 'job_id', 'python', 'lua', 'python_module', 'test_runner' }) do
     if value[key] then
       assert(type(value[key]) == 'string' and not value[key]:find('[%z\r\n]'), 'Invalid ' .. key)
     end

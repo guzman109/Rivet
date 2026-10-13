@@ -24,7 +24,73 @@ local function mutation(kind)
   )
 end
 function M.file()
-  mutation('file')
+  local project, model = require('rivet.project'), require('rivet.model')
+  local ok_root, root = pcall(current_root)
+  local path = vim.api.nvim_buf_get_name(0)
+  if
+    not ok_root
+    or (
+      vim.bo.buftype == ''
+      and path ~= ''
+      and not project.root(path)
+      and not project.root(vim.fn.getcwd())
+    )
+  then
+    root = vim.fn.getcwd()
+  end
+  local ok, spec = pcall(project.inspect, root)
+  spec = ok and spec or { language = 'text', name = root:match('[^/]+$'), external = true }
+  local languages = {}
+  local preferred = require('rivet.file_templates').infer(vim.api.nvim_buf_get_name(0))
+    or spec.language
+  local ids = { preferred }
+  for _, id in ipairs(model.list_languages()) do
+    if id ~= preferred then
+      ids[#ids + 1] = id
+    end
+  end
+  if preferred ~= 'text' then
+    ids[#ids + 1] = 'text'
+  end
+  for _, id in ipairs(ids) do
+    languages[#languages + 1] = {
+      id = id,
+      label = id == 'text' and 'Other · blank file' or (id == 'cpp' and 'C++' or id),
+      description = id == spec.language
+          and not spec.external
+          and 'Register with this project’s targets.'
+        or 'Create files and review their paths; host build registration is separate.',
+    }
+  end
+  ui.select_preview(
+    'New file language',
+    languages,
+    protected(function(item)
+      local options = { language = item.id }
+      local steps
+      if item.id == spec.language and not spec.external then
+        steps = model.questions('file', spec)
+      elseif spec.language == 'cpp' and item.id == 'c' and not spec.external then
+        local targets = {}
+        for _, target in ipairs(spec.targets) do
+          if not target.external then
+            targets[#targets + 1] = target
+          end
+        end
+        steps = require('rivet.file_templates').questions(spec, 'c')
+        table.insert(steps, 2, { key = 'target', title = 'C/C++ target', items = targets })
+      else
+        steps = require('rivet.file_templates').questions(spec, item.id)
+      end
+      require('rivet.wizard').run(
+        options,
+        steps,
+        protected(function(back)
+          review(root, project.file_plan(root, options), nil, back)
+        end)
+      )
+    end)
+  )
 end
 function M.target()
   mutation('target')
@@ -83,12 +149,20 @@ function M.files()
   local spec = require('rivet.project').load(root)
   local entries = {}
   for _, t in ipairs(spec.targets or {}) do
-    for _, field in ipairs({ 'sources', 'headers', 'modules' }) do
-      for _, path in ipairs(t[field] or {}) do
-        entries[#entries + 1] = { name = path }
+    if not t.external then
+      for _, field in ipairs({ 'sources', 'headers', 'modules' }) do
+        for _, path in ipairs(t[field] or {}) do
+          entries[#entries + 1] = { name = path }
+        end
       end
     end
   end
+  for path in pairs(spec.file_languages or {}) do
+    entries[#entries + 1] = { name = path }
+  end
+  table.sort(entries, function(a, b)
+    return a.name < b.name
+  end)
   choose('Registered file: ', entries, function(item)
     choose('File operation: ', { 'Move / rename file', 'Remove file' }, function(action)
       local function plan(destination)
@@ -185,6 +259,11 @@ end
 function M.migrate()
   local root = assert(require('rivet.project').root(), 'Open an Outset project first')
   review(root, require('rivet.migration').plan(root))
+end
+
+function M.upgrade()
+  local root = current_root()
+  review(root, require('rivet.upgrade').plan(root))
 end
 
 return M

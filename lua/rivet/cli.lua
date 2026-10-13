@@ -2,26 +2,29 @@ local M = {}
 local rt = require('rivet.runtime')
 local project = require('rivet.project')
 local function help()
-  print([[
+  print([=[
 Rivet — Neovim-first project tools (macOS/Linux)
 
 rivet new ROOT [--name NAME] [--interactive] [--preview] [--build]
-  --language cpp|c|python|rust|swift
+  --language cpp|c|python|rust|swift|lua
   --profile general|cpu|openmp|mpi|cuda|metal|webgpu|vulkan|opengl
   --cuda-standard 17|20|23 --cuda-architectures native|all-major|80;90
   --manager python|uv --edition 2021|2024
+  --runtime lua|luajit|neovim (Lua projects)
   --standard 17|20|23|26 (C++), 11|17|23 (C)
   --modules true|false --std-modules true|false
   --module-layout single|split
   --style LLVM|Google|Chromium|Mozilla|WebKit|Microsoft|GNU
-  --layout feature|library|flat --kind app|library (Rust also: workspace)
+  --layout feature|library|flat --kind app|library (Rust also: workspace; Lua also: plugin)
   --header-guard pragma|ifndef
   --generator Ninja|"Unix Makefiles" --compiler /path/to/clang++
   --git true|false
   --license none|MIT|Apache-2.0|BSD-3-Clause|GPL-3.0-only
   --license-holder "Ada Lovelace" --license-year 2026
 rivet file NAME [--target NAME] [--preview]
-  C++ --kind source|header|pair|class|module|module_impl|c_source|c_header
+  --language cpp|c|lua selects a mixed-language file template.
+  C++ --kind source|header|pair|class|module|module_impl|module_pair|c_source|c_header|c_pair
+  Lua --kind module|script|embedded
   Other providers use their native source template.
 rivet target NAME --kind app|library
 rivet dependency NAME --repository owner/repo --tag PIN --target lib::lib --link-to NAME
@@ -30,6 +33,9 @@ rivet remove PATH [--preview]
 rivet module-rename FROM TO [--preview]
 rivet repair MANAGED_FILE [--preview]
 rivet migrate [--root PATH] [--preview]
+rivet upgrade [--root PATH] [--preview]
+rivet config [TOOL [KEY VALUE]] [--root PATH] [--preview]
+  TOOL: clang-format|clang-tidy|clangd. Omit KEY VALUE to list settings and descriptions.
 rivet --version
 rivet targets
 rivet configure|build|check|test|run|format|lint|package|xcode [--preset NAME] [--target APP]
@@ -62,7 +68,7 @@ CMake Build configures first; Test/Run configure and build. Native providers
 use their ecosystem tasks. C++ projects also include optional justfile recipes.
 No packages are downloaded by scaffolding. CPM downloads only during configure
 after a dependency is explicitly added. No runtime LuaRocks dependencies.
-]])
+]=])
 end
 local function parse(args)
   local positional, opts, i = {}, {}, 2
@@ -101,6 +107,7 @@ local function parse(args)
     cuda_standard = true,
     cuda_architectures = true,
     manager = true,
+    runtime = true,
     edition = true,
     license = true,
     license_holder = true,
@@ -137,6 +144,11 @@ local function parse(args)
   end
   return positional, opts
 end
+local function show_notes(plan)
+  for _, note in ipairs(plan.notes or {}) do
+    print('Note: ' .. note)
+  end
+end
 local function show(plan)
   local paths = {}
   for path in pairs(plan.files) do
@@ -145,6 +157,7 @@ local function show(plan)
   table.sort(paths)
   print('Project: ' .. plan.root)
   print('Name: ' .. plan.spec.name)
+  show_notes(plan)
   if plan.git then
     print(plan.git.summary)
   end
@@ -314,6 +327,29 @@ function M.main(args)
     end
     return 0
   end
+  if command == 'config' and not pos[2] then
+    local config = require('rivet.tool_config')
+    if not pos[1] then
+      for _, tool in ipairs(config.tools()) do
+        print(tool.id .. ' — ' .. tool.description .. '\n  File: ' .. tool.path)
+        print('  Reference: ' .. tool.url)
+      end
+    else
+      local tool = config.tool(pos[1])
+      print(tool.label .. '\n' .. tool.description)
+      print('File: ' .. tool.path .. '\nReference: ' .. tool.url)
+      for _, entry in ipairs(config.catalog(tool.id)) do
+        print('\n' .. entry.key .. ' (' .. entry.type .. ') — ' .. entry.description)
+        if entry.default then
+          print('  Default: ' .. entry.default)
+        end
+        for _, choice in ipairs(entry.choices or {}) do
+          print('  ' .. choice.id .. ' — ' .. (choice.description or choice.label))
+        end
+      end
+    end
+    return 0
+  end
   if command == 'new' then
     local root = assert(pos[1] or opts.root, 'Usage: rivet new ROOT')
     local preview, interactive_mode, build, preset =
@@ -363,6 +399,30 @@ function M.main(args)
   end
   local root = opts.root and rt.absolute(opts.root) or project.root(rt.cwd())
   assert(root, 'No Rivet project found; use --root PATH or rivet new ROOT')
+  if command == 'config' then
+    assert(#pos == 3, 'Usage: rivet config TOOL [KEY VALUE] [--preview]')
+    local plan = require('rivet.tool_config').plan(root, pos[1], pos[2], pos[3])
+    if opts.preview then
+      show(plan)
+    else
+      project.apply(root, plan)
+      print('Updated ' .. require('rivet.tool_config').tool(pos[1]).path)
+      show_notes(plan)
+    end
+    return 0
+  end
+  if command == 'upgrade' then
+    assert(#pos == 0, 'Usage: rivet upgrade [--root PATH] [--preview]')
+    local plan = require('rivet.upgrade').plan(root)
+    if opts.preview then
+      show(plan)
+    else
+      project.apply(root, plan)
+      print('Upgraded supplementary templates: ' .. root)
+      show_notes(plan)
+    end
+    return 0
+  end
   if command == 'move' or command == 'remove' or command == 'module-rename' then
     local plan = project.lifecycle_plan(root, {
       action = command == 'module-rename' and 'module' or command,

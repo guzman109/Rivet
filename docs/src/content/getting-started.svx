@@ -6,7 +6,7 @@ order: 4
 updated: '2026-10-09'
 ---
 
-The optional CLI shares Rivet's Lua core with Neovim and supports all five bundled languages. This quick start uses C++ with conventional headers. For native language workflows, follow [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), or [C](/docs/c/). First [obtain the development checkout](/docs/start-here/#get-the-source).
+The optional CLI shares Rivet's Lua core with Neovim and supports all six bundled languages. This quick start uses C++ with conventional headers. For native language workflows, follow [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), or [C](/docs/c/). First [download the source archive or obtain a checkout](/docs/start-here/#local-development).
 
 ## Check the tools
 

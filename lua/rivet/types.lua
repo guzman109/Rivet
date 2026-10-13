@@ -8,6 +8,7 @@
 ---@field default_preset? string Configure preset chosen when none is remembered.
 ---@field profiles? table<string, table> Reusable creation choices by name.
 ---@field identity? rivet.HeaderIdentity Header details used instead of the saved identity.
+---@field task_output? 'keep'|'close-on-success' Behavior for completed task output.
 
 ---@class rivet.HeaderIdentity
 ---@field style? string
@@ -30,6 +31,7 @@
 ---@field resources? string[]
 ---@field links? string[]
 ---@field test? boolean
+---@field external? boolean
 
 ---A pinned dependency recorded in a C/C++ manifest.
 ---@class rivet.Dependency
@@ -59,6 +61,9 @@
 ---@field comment_header? rivet.HeaderIdentity
 ---@field license? string|table
 ---@field external? boolean
+---@field rivet_version? string Version that last created or upgraded supplements.
+---@field template_baselines? table<string, string> Last adopted supplementary templates.
+---@field file_languages? table<string, string> Language of supplemental files.
 ---@field [string] any
 
 ---A reviewed set of file changes. A false file value removes that path.
@@ -83,7 +88,8 @@
 ---@field add_dependency fun(spec: rivet.Spec, opts: table): rivet.Plan
 ---@field questions? fun(kind: string, spec: rivet.Spec, context: table): table[]
 ---@field default_name? fun(folder: string): string
----@field formatter? fun(spec: rivet.Spec, filename: string, tools: table): string[]?
+---@field formatter? fun(spec: rivet.Spec, filename: string, tools: table, context?: table): string[]?
 ---@field local_files? fun(spec: rivet.Spec, context: table): table<string, string>
 ---@field ignore_rules? fun(spec: rivet.Spec?): string
 ---@field lifecycle? fun(spec: rivet.Spec, opts: table, contents: table<string, string>): rivet.Plan
+---@field upgrade_files? fun(spec: rivet.Spec): table<string, string>
