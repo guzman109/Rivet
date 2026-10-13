@@ -3,7 +3,7 @@ title: C and C++ interoperability
 description: Create strict C projects or add C sources and ABI headers to an existing C++ project.
 section: Guides
 order: 22
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
 C is a bundled provider alongside C++. New C projects offer C17, C23, and C11; C17 is the default. They generate a static core library, optional application, and CTest correctness check through CMake. The public header includes `extern "C"` guards for C++ consumers.
@@ -22,7 +22,7 @@ nvim
 2. Choose Git and comment-header preferences, **Application**, and **C17**. Review and apply with `c`.
 3. Open `app/main.c`. Run `:RivetTask run`, select Debug, and expect `42`.
 4. Run `:RivetTask test`. CTest should report one passing test.
-5. Use `:RivetFile` to create `extra` in the selected core target. CMake registration updates with the `.c` source. Save changes, then Build or Test again.
+5. Run `:RivetFile`, select **c**, choose **C source**, and create `extra` in the core target. CMake registration updates with the `.c` source. Save changes, then Build or Test again.
 
 To try quickfix, temporarily remove the semicolon from the statement in `main.c`, save, and Build. Use `:copen` to jump to the error, restore the semicolon, and `:RivetTask repeat`.
 
@@ -38,7 +38,7 @@ C mode is strict (`C_STANDARD_REQUIRED YES`, extensions disabled). The selected 
 
 ## Mix C into a C++ project
 
-Select **C source for mixed C/C++** or **C header with extern C guards** in `:RivetFile`. A C source enables C in the generated target registration and requests C17 independently of the C++ standard. Use the header to declare the C ABI and include it from C++.
+Run `:RivetFile`, select **C++**, then **C source for mixed C/C++** or **C header with extern C guards**. You can also select **c** and choose a source, header, or pair for an existing C++ target. A C source enables C in the generated target registration and requests C17 independently of the C++ standard. Use the header to declare the C ABI and include it from C++.
 
 ```sh
 rivet file interop --kind c_source --target simulation_core

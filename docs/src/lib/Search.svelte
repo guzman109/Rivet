@@ -56,6 +56,9 @@
 			type="search"
 			placeholder="Search modules, CMake, commands…"
 			autocomplete="off"
+			autocorrect="off"
+			autocapitalize="off"
+			spellcheck={false}
 		/>
 		<button class="escape-button" onclick={() => dialog.close()} aria-label="Close search"
 			>Esc</button

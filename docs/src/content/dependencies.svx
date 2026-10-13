@@ -3,10 +3,10 @@ title: CPM dependencies
 description: Add versioned source dependencies and link their exported CMake targets.
 section: Guides
 order: 13
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
-Rivet's C++ provider uses CPM for explicitly registered source dependencies. The general C++ starter has no third-party dependency to download and can configure and build offline with the required tools already installed. Workload profiles require the SDKs/runtimes described in their guides. C projects use custom CMake for dependencies; Python, Rust, and Swift use native package configuration.
+Rivet's C++ provider uses CPM for explicitly registered source dependencies. The general C++ starter has no third-party dependency to download and can configure and build offline with the required tools already installed. Workload profiles require the SDKs/runtimes described in their guides. C projects use custom CMake for dependencies; Python, Rust, and Swift use native package configuration. Lua dependencies belong to your explicit LuaRocks or existing package workflow.
 
 ## Register the package and its consumer
 

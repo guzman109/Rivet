@@ -44,6 +44,9 @@ local function run_workflow(root, name, preset, target_name, done)
     local diagnostic_service = (provider.services or {}).diagnostics
       and require('rivet.tasks').service(spec, 'diagnostics')
     local parser = diagnostic_service and diagnostic_service.parse
+    if diagnostic_service and diagnostic_service.parse_for then
+      parser = diagnostic_service.parse_for(argv)
+    end
     local renderer = diagnostic_service and diagnostic_service.render
     if diagnostic_service and diagnostic_service.render_for then
       renderer = diagnostic_service.render_for(argv)

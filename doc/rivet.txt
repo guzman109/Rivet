@@ -210,6 +210,18 @@ Preview lists:
 
 Text prompts accept `:back` to return to the previous question.
 
+The file-template picker previews the configured comment header with a sample
+filename. Python, Rust, and Swift show a New source file picker with a single
+Source file choice before the path prompt; C/C++ and Lua retain their template
+choices. Foreign-language files use the selected language's comment syntax.
+Without saved defaults, the preview says no header is configured. The final
+review shows actual filenames and complete headers in both files of a pair.
+Use |:RivetHeaderDefaults| to set future-file headers in a Rivet-owned
+project.
+
+For C/C++, choose Doxygen documentation to start API documentation beside the
+code. The website Doxygen guide covers HTML/XML and documentation consumers.
+
 The final review lists every planned file with its full content (and a diff
 for changes). Press `c` or <C-s> to apply it. Nothing is written before then.
 A plan is refused if its files changed after it was generated.

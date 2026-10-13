@@ -62,6 +62,7 @@ export const docs: Doc[] = Object.entries(metadata)
 		const source = raw[path];
 		const text = source
 			.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
+			.replace(/^(`{3,}|~{3,})[^\r\n]*$/gm, '')
 			.replace(/<script[\s\S]*?<\/script>/g, '')
 			.replace(/<[^>]+>/g, '')
 			.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')

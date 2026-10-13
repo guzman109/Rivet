@@ -17,10 +17,14 @@ local function owned(language, kind)
   local path = root .. '/' .. language .. '-' .. (kind or 'app')
   project.apply(
     path,
-    project.plan(
-      { language = language, kind = kind, name = 'host', standard = 17, modules = false },
-      path
-    )
+    project.plan({
+      language = language,
+      kind = kind,
+      name = 'host',
+      standard = 17,
+      modules = false,
+      comment_header = { style = 'compact', author = 'Ada' },
+    }, path)
   )
   return path
 end
@@ -31,11 +35,34 @@ for _, language in ipairs({ 'c', 'cpp' }) do
   local path = owned(language)
   local original = rt.read(path .. '/CMakeLists.txt')
   local manifest = rt.read(path .. '/.rivet.json')
+  local existing_sources = {}
+  for _, file in ipairs(project.load(path).files) do
+    if require('rivet.headers').accepts(file) then
+      existing_sources[file] = rt.read(path .. '/' .. file)
+    end
+  end
   local plan = embedding.plan(path, { name = 'game/demo' })
   assert(
     rt.read(path .. '/CMakeLists.txt') == original and rt.read(path .. '/.rivet.json') == manifest
   )
   assert(not rt.exists(path .. '/scripts/game/demo.lua'), 'Preview created a script')
+  for file, content in pairs(existing_sources) do
+    assert(rt.read(path .. '/' .. file) == content, 'Preview changed existing source: ' .. file)
+    assert(not plan.files[file], 'Embedding would rewrite existing source: ' .. file)
+  end
+  local ext = language == 'c' and 'c' or 'cpp'
+  local host_source = 'examples/game/demo/main.' .. ext
+  local host_header = require('rivet.headers').render(
+    plan.spec.comment_header,
+    { filename = host_source, project = plan.spec.name }
+  )
+  local lua_header = require('rivet.lua_headers').render(
+    plan.spec.comment_header,
+    { filename = 'scripts/game/demo.lua', project = plan.spec.name }
+  )
+  assert(plan.files[host_source]:sub(1, #host_header) == host_header)
+  assert(plan.files['scripts/game/demo.lua']:sub(1, #lua_header) == lua_header)
+  assert(not plan.files['cmake/Lua_game_demo.cmake']:find('Author: Ada', 1, true))
   assert(plan.expected['.rivet.json'] == manifest)
   assert(plan.files['CMakeLists.txt']:sub(1, #original) == original)
   assert(plan.spec.targets[#plan.spec.targets].external)
@@ -54,7 +81,6 @@ for _, language in ipairs({ 'c', 'cpp' }) do
     local upgraded = require('rivet.upgrade').plan(path)
     assert(not upgraded.files['CMakeLists.txt'], 'Upgrade would erase the embedding include')
   end
-  local ext = language == 'c' and 'c' or 'cpp'
   assert(rt.read(path .. '/examples/game/demo/main.' .. ext):find('lua_register', 1, true))
   rejects(function()
     embedding.plan(path, { name = 'game/demo' })
@@ -70,6 +96,17 @@ for _, language in ipairs({ 'c', 'cpp' }) do
     local build = path .. '/build/lua-review'
     run({ cmake, '-S', path, '-B', build, '-G', 'Ninja' })
     run({ cmake, '--build', build, '--target', 'game_demo_lua' })
+    assert(run({ build .. '/game_demo_lua' }, root):find('Lua says: 42', 1, true))
+    -- A module created by the ordinary Lua file flow must be usable by its host.
+    project.apply(
+      path,
+      project.file_plan(path, { language = 'lua', name = 'feature', kind = 'module' })
+    )
+    rt.write(path .. '/lua/host/feature.lua', 'return { answer = 42 }\n')
+    rt.write(
+      path .. '/scripts/game/demo.lua',
+      'assert(require("host.feature").answer == 42)\n' .. rt.read(path .. '/scripts/game/demo.lua')
+    )
     assert(run({ build .. '/game_demo_lua' }, root):find('Lua says: 42', 1, true))
     rt.write(path .. '/scripts/override.lua', 'print("alternate script")\n')
     assert(
@@ -126,6 +163,19 @@ for _, kind in ipairs({ 'app', 'workspace' }) do
   local main = rt.read(path .. '/' .. prefix .. 'src/main.rs')
   local before_cargo = rt.read(path .. '/' .. prefix .. 'Cargo.toml')
   local plan = embedding.plan(path, { name = 'example' })
+  assert(rt.read(path .. '/' .. prefix .. 'src/main.rs') == main, 'Preview changed Rust main')
+  assert(not plan.files[prefix .. 'src/main.rs'], 'Embedding would rewrite Rust main')
+  assert(not rt.exists(path .. '/' .. prefix .. 'examples/example.rs'))
+  local example_header = require('rivet.headers').render(
+    plan.spec.comment_header,
+    { filename = prefix .. 'examples/example.rs', project = plan.spec.name }
+  )
+  local script_header = require('rivet.lua_headers').render(
+    plan.spec.comment_header,
+    { filename = 'scripts/example.lua', project = plan.spec.name }
+  )
+  assert(plan.files[prefix .. 'examples/example.rs']:sub(1, #example_header) == example_header)
+  assert(plan.files['scripts/example.lua']:sub(1, #script_header) == script_header)
   local cargo = plan.files[prefix .. 'Cargo.toml']
   assert(cargo:sub(1, #before_cargo) == before_cargo)
   assert(cargo:find('version = "=0.12.2"', 1, true))
@@ -140,6 +190,15 @@ for _, kind in ipairs({ 'app', 'workspace' }) do
   )
   project.apply(path, plan)
   assert(rt.read(path .. '/' .. prefix .. 'src/main.rs') == main)
+  project.apply(
+    path,
+    project.file_plan(path, { language = 'lua', name = 'feature', kind = 'module' })
+  )
+  rt.write(path .. '/lua/host/feature.lua', 'return { answer = 42 }\n')
+  rt.write(
+    path .. '/scripts/example.lua',
+    'assert(require("host.feature").answer == 42)\n' .. rt.read(path .. '/scripts/example.lua')
+  )
   rejects(function()
     embedding.plan(path, { name = 'another' })
   end)

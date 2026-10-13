@@ -415,6 +415,16 @@ function M.run(root, argv, title, callback, opts)
   running[root] = token
   local streams = { stdout = { raw = {}, partial = '' }, stderr = { raw = {}, partial = '' } }
   local queue, scheduled, finished, emitted = {}, false, false, 0
+  local renderer = opts.render_line
+  ---@type function|nil
+  local parser = opts.diagnostics or require('rivet.diagnostics').parse
+  local reported = {}
+  local function report(kind, err)
+    if not reported[kind] then
+      reported[kind] = true
+      M.notify(title .. ': ' .. kind .. ': ' .. tostring(err), vim.log.levels.WARN)
+    end
+  end
   vim.keymap.set('n', '<CR>', function()
     if finished then
       close_output(buf)
@@ -423,24 +433,39 @@ function M.run(root, argv, title, callback, opts)
   local function flush(final)
     scheduled = false
     local completed, diagnostics = {}, {}
-    local function emit(line)
+    local function emit(line, stream_name)
       line = clean_output(line)
       local displayed = line
-      if opts.render_line then
-        displayed = opts.render_line(line)
+      if renderer then
+        local ok, value = pcall(renderer, line, stream_name)
+        if ok and (value == nil or value == false or type(value) == 'string') then
+          displayed = value
+        else
+          renderer = nil
+          report('Output rendering disabled; showing raw output', ok and 'Expected text' or value)
+        end
       end
       if displayed then
         for _, part in ipairs(vim.split(displayed:gsub('\n$', ''), '\n', { plain = true })) do
           completed[#completed + 1] = part
         end
       end
-      local parser = opts.diagnostics or require('rivet.diagnostics').parse
-      local item = parser(line, opts.diagnostic_cwd or root)
-      if item then
-        if item.filename then
-          item.filename = vim.fs.normalize(item.filename)
+      if parser then
+        local ok, item = pcall(function()
+          local value = parser(line, opts.diagnostic_cwd or root, stream_name)
+          assert(value == nil or type(value) == 'table', 'Expected a diagnostic table or nil')
+          if value and value.filename then
+            assert(type(value.filename) == 'string', 'Expected a diagnostic filename')
+            value.filename = vim.fs.normalize(value.filename)
+          end
+          return value
+        end)
+        if not ok then
+          parser = nil
+          report('Diagnostic collection disabled', item)
+        elseif item then
+          diagnostics[#diagnostics + 1] = item
         end
-        diagnostics[#diagnostics + 1] = item
       end
     end
     for _, event in ipairs(queue) do
@@ -451,7 +476,7 @@ function M.run(root, argv, title, callback, opts)
         if not newline then
           break
         end
-        emit(stream.partial:sub(1, newline - 1))
+        emit(stream.partial:sub(1, newline - 1), event.name)
         stream.partial = stream.partial:sub(newline + 1)
       end
     end
@@ -459,14 +484,18 @@ function M.run(root, argv, title, callback, opts)
     if final then
       for _, name in ipairs({ 'stdout', 'stderr' }) do
         if streams[name].partial ~= '' then
-          emit(streams[name].partial)
+          emit(streams[name].partial, name)
         end
         streams[name].partial = ''
       end
     end
     if #diagnostics > 0 then
       -- Update our own list, even if the user or another project changed lists.
-      vim.fn.setqflist({}, 'a', { id = qfid, items = diagnostics })
+      local ok, result = pcall(vim.fn.setqflist, {}, 'a', { id = qfid, items = diagnostics })
+      if not ok or result ~= 0 then
+        parser = nil
+        report('Diagnostic collection disabled', ok and 'Quickfix update failed' or result)
+      end
     end
     if vim.api.nvim_buf_is_valid(buf) then
       local follow = {}
@@ -497,6 +526,12 @@ function M.run(root, argv, title, callback, opts)
     end
     emitted = emitted + #completed
   end
+  local function safe_flush(final)
+    local ok, err = pcall(flush, final)
+    if not ok then
+      report('Could not update task output', err)
+    end
+  end
   local function receive(name)
     return function(err, data)
       if data then
@@ -510,7 +545,7 @@ function M.run(root, argv, title, callback, opts)
         scheduled = true
         vim.schedule(function()
           if not finished then
-            flush()
+            safe_flush()
           end
         end)
       end
@@ -527,8 +562,8 @@ function M.run(root, argv, title, callback, opts)
   }, function(process)
     vim.schedule(function()
       finished = true
-      flush(process)
       running[root] = nil
+      safe_flush(process)
       process.stdout = table.concat(streams.stdout.raw)
       process.stderr = table.concat(streams.stderr.raw)
       local success = process.code == 0 and (process.signal or 0) == 0 and not token.cancelled

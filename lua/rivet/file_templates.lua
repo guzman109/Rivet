@@ -3,6 +3,25 @@ local helpers = require('rivet.languages.cpp_spec')
 local M = {}
 local extensions =
   { cpp = 'cpp', c = 'c', python = 'py', rust = 'rs', swift = 'swift', lua = 'lua' }
+local function header_options(headers, value)
+  if not value or not value.style or not headers.styles then
+    return value
+  end
+  local compact = false
+  for _, style in ipairs(headers.styles) do
+    if style.id == value.style then
+      return value
+    end
+    compact = compact or style.id == 'compact'
+  end
+  if not compact then
+    return value
+  end
+  -- Python has line-comment headers; keep the project identity in its supported syntax.
+  local adapted = helpers.copy(value)
+  adapted.style = 'compact'
+  return adapted
+end
 function M.infer(name)
   local ext = type(name) == 'string' and name:match('%.([%w]+)$')
   if ext == 'h' then
@@ -16,6 +35,89 @@ function M.infer(name)
       return language
     end
   end
+end
+function M.with_header_previews(steps, spec, language)
+  local output = helpers.copy(steps)
+  local model = require('rivet.model')
+  if not model.supports(language) then
+    return output
+  end
+  local service = model.provider({ language = language }).services
+  local headers = service and service.headers
+  headers = type(headers) == 'string' and require(headers) or headers
+  if not headers then
+    return output
+  end
+  local has_kind = false
+  for _, step in ipairs(output) do
+    has_kind = has_kind or step.key == 'kind'
+  end
+  if not has_kind then
+    table.insert(output, 1, {
+      key = 'kind',
+      title = 'New source file',
+      items = { { id = 'source', label = 'Source file' } },
+    })
+  end
+  local function decorate(items)
+    items = helpers.copy(items)
+    for _, item in ipairs(items) do
+      local kind = item.id
+      local ext = extensions[language] or 'cpp'
+      if kind == 'header' or kind == 'pair' or kind == 'class' then
+        ext = language == 'c' and 'h' or 'hpp'
+      end
+      if kind == 'c_header' or kind == 'c_pair' then
+        ext = 'h'
+      end
+      if kind == 'c_source' then
+        ext = 'c'
+      end
+      if language == 'cpp' and (kind == 'module' or kind == 'module_pair') then
+        ext = 'cppm'
+      end
+      local options = header_options(headers, spec.comment_header)
+      local header = headers.render(options, { filename = 'example.' .. ext, project = spec.name })
+      local prefix = (
+        header ~= '' and header
+        or (
+          'No file comment header is configured.'
+          .. (spec.external and '' or ' Use :RivetHeaderDefaults to set one.')
+          .. '\n\n'
+        )
+      )
+      local original = item.preview
+      local function combine(body)
+        body = body or item.description or item.label or item.id or item.name or ''
+        if type(body) == 'table' then
+          body = table.concat(body, '\n')
+        end
+        return prefix
+          .. body
+          .. (options ~= spec.comment_header and '\n\nThe project header style is adapted to this language’s line-comment syntax.' or '')
+          .. '\n\nThe final review shows the complete files with their actual filenames and headers.'
+      end
+      item.preview = type(original) == 'function'
+          and function(choice)
+            return combine(original(choice))
+          end
+        or combine(original)
+    end
+    return items
+  end
+  for _, step in ipairs(output) do
+    if step.key == 'kind' and step.items then
+      if type(step.items) == 'function' then
+        local original = step.items
+        step.items = function(values)
+          return decorate(original(values))
+        end
+      else
+        step.items = decorate(step.items)
+      end
+    end
+  end
+  return output
 end
 function M.questions(spec, language)
   local kinds = { { id = 'source', label = 'Source file' } }
@@ -78,12 +180,22 @@ function M.plan(existing, opts, language)
   spec.files, spec.file_languages = spec.files or {}, spec.file_languages or {}
   local kind = opts.kind or (language == 'lua' and 'module' or 'source')
   local raw = helpers.path(assert(opts.name, 'File name required'))
+  local headers
+  if language ~= 'text' then
+    headers = require('rivet.tasks').service({ language = language }, 'headers')
+  end
   local function add(path, body)
     helpers.path(path)
     for _, old in ipairs(spec.files) do
       assert(old:lower() ~= path:lower(), 'File already registered: ' .. path)
     end
-    spec.files[#spec.files + 1], spec.file_languages[path], files[path] = path, language, body
+    spec.files[#spec.files + 1], spec.file_languages[path], files[path] =
+      path,
+      language,
+      (headers and headers.render(
+        header_options(headers, spec.comment_header),
+        { filename = path, project = spec.name }
+      ) or '') .. body
   end
   if language == 'lua' then
     local path, body = require('rivet.languages.lua').file_template(

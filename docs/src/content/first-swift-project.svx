@@ -1,0 +1,155 @@
+---
+title: Your first Swift project
+description: Create a SwiftPM executable and core library, add a source file, and build, run, and test the package.
+section: Start here
+order: 8
+updated: '2026-10-13'
+---
+
+This walkthrough creates `personal_tool`: a command-line SwiftPM executable, a reusable core library, and an XCTest test. SwiftPM owns the package's builds and dependencies. Xcode handles native Apple application targets, signing, simulators, and platform deployment.
+
+## Check the tools
+
+[Install and load Rivet](/docs/start-here/#install-in-neovim) in Neovim 0.11 or newer. Use a Swift 6.0 or newer toolchain with SwiftPM, and make `swift` available on the editor's `PATH`. The generated manifest starts with `// swift-tools-version: 6.0`.
+
+Check it in a terminal:
+
+```sh
+swift --version
+swift package --help
+```
+
+After creating the package, `:RivetDoctor` checks its Swift tools. Format and Lint use the toolchain's `swift format`, when available. Rivet creates the package using your installed tools; project creation does not install a toolchain or resolve package dependencies.
+
+## Create the package in Neovim
+
+Start in a parent directory of your choice:
+
+```sh
+mkdir personal_tool
+cd personal_tool
+nvim
+```
+
+Run `:pwd` to confirm the destination, then `:RivetNew`. Select **New choices** first if a saved-profile menu appears.
+
+| Prompt | Choice for this walkthrough |
+| --- | --- |
+| Project language | `swift` |
+| Create project in | Current folder |
+| Project name | `personal_tool` |
+| Git repository | Skip Git initialization |
+| Project license | No license yet |
+| File comment headers | No header |
+| Project kind | Application |
+
+Git initialization, a license, and personalized headers are also available. Review the proposed file tree and file contents, then press `c` or Ctrl-S to create the package. Press `q` to cancel the review. The files go directly into `personal_tool`.
+
+The main files are:
+
+```text
+personal_tool/
+  Package.swift
+  .rivet.json
+  .gitignore
+  .editorconfig
+  README.md
+  AGENTS.md
+  Sources/
+    personal_tool/
+      main.swift
+    personal_toolCore/
+      Core.swift
+  Tests/
+    personal_toolTests/
+      CoreTests.swift
+```
+
+`Package.swift` declares the executable product, core library, and test target. `Core.swift` exports `sum`; `main.swift` imports the core and prints a result. `.rivet.json` records Rivet's choices and target ownership. SwiftPM creates its `.build/` directory as you build and test.
+
+## Build, run, and test
+
+Open the executable and build it:
+
+```vim
+:edit Sources/personal_tool/main.swift
+:RivetTask build
+```
+
+Select **Debug / development** when prompted. A successful workflow finishes with `Exit status: 0`.
+
+Run `:RivetTask run`. SwiftPM builds and launches `personal_tool`, which prints:
+
+```text
+42
+```
+
+Run `:RivetTask test`. The XCTest method `CoreTests.testAdd` checks `sum(20, 22) == 42` and `sum(-1, 1) == 0`. Expect one passing XCTest test. Some Swift toolchains print an additional summary for a test runner that has no tests; the XCTest result is the relevant starter result.
+
+Use `q` to close task output. `:RivetPreset` changes Debug/Release, and `:RivetTask repeat` repeats the previous task. With several executable products, `:RivetRunTarget` selects which one Run launches. Check uses the same `swift build` operation as Build.
+
+## Add a source to the core target
+
+Run `:RivetFile`, choose **swift** in the file-language picker, then **Source file** in the **New source file** preview. Check its header sample, or the message that no header is configured. Enter `Answer` as the name and select `personal_toolCore` as the owning target. The review should add `Sources/personal_toolCore/Answer.swift`. Approve with `c` and open it:
+
+```vim
+:edit Sources/personal_toolCore/Answer.swift
+```
+
+Keep any optional file header and replace the template below it with:
+
+```swift
+/// Returns the example answer.
+public func answer() -> Int {
+    42
+}
+```
+
+Replace the executable code in `Sources/personal_tool/main.swift` with:
+
+```swift
+import personal_toolCore
+
+print("Answer: \(answer())")
+```
+
+Save with `:wall`, then run `:RivetTask run` and `:RivetTask test`. Run prints `Answer: 42`, and the original core test still passes.
+
+SwiftPM discovers source files inside its target directories, so this addition preserves `Package.swift`. You can also enter `Sources/personal_toolCore/Answer.swift` as an explicit project-relative path. For customized target directories, choose a path that matches the native manifest; recording a file in Rivet does not add arbitrary paths to a SwiftPM target.
+
+## Follow a compiler error
+
+Temporarily change `answer()` in `main.swift` to `answr()`, save, and run `:RivetTask build`. Swift should report the unknown name.
+
+Run `:copen` and press Enter on the diagnostic to jump to its source location. Use `:cnext` and `:cprevious` for other entries. Correct the spelling, save, and run `:RivetTask repeat`; Build should succeed. Run Test again after making implementation changes.
+
+## Use the CLI instead
+
+With the optional [CLI installed](/docs/getting-started/), start in the parent directory and create the same starter:
+
+```sh
+rivet new personal_tool --language swift --kind app --preview
+rivet new personal_tool --language swift --kind app
+rivet build --root personal_tool
+rivet run --root personal_tool
+rivet test --root personal_tool
+```
+
+The preview creates no files. The second command writes the package, and Run prints `42`. Add the core source with:
+
+```sh
+rivet file Answer --language swift --target personal_toolCore --root personal_tool --preview
+rivet file Answer --language swift --target personal_toolCore --root personal_tool
+```
+
+Apply the source edits from the previous section, then repeat Run and Test. Rivet registers the source with the recorded core target and leaves `Package.swift` intact.
+
+## Document and extend the package
+
+Use Swift documentation comments such as the `///` comment on `answer` for public API descriptions. [Swift-DocC](https://www.swift.org/documentation/docc/) provides Swift documentation tooling; set up its documentation workflow explicitly for your package.
+
+Swift is outside [Doxygen's built-in language list](https://www.doxygen.nl/manual/starting.html#step0). If an existing documentation site requires Doxygen, supply and maintain a suitable external adapter or input filter. Rivet does not generate a Swift-to-Doxygen adapter. See the [Doxygen guide](/docs/doxygen/) for shared documentation and adapter limits.
+
+On macOS with Xcode installed, `:RivetTask xcode` opens `Package.swift` in Xcode. Use the core package as reusable logic when you create an Apple application there. Rivet's starter remains a SwiftPM package.
+
+Continue with [Swift packages and Xcode](/docs/swift/) for additional products and custom native manifests. Use SwiftPM or edit `Package.swift` to add dependencies. `:RivetTarget` can extend an unchanged generated manifest; a customized manifest should be edited through its native workflow.

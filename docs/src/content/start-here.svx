@@ -37,7 +37,9 @@ With lazy.nvim on Neovim 0.11+, use this plugin specification:
 }
 ```
 
-Restart Neovim after changing its configuration. The version range follows patch releases in the 0.1 series. Set a fixed `v0.1.0` tag to pin one release; use `main` to follow development. Both managers store the installed revision in a lockfile.
+Restart Neovim after adding the plugin to your configuration. The version range follows patch releases in the 0.1 series. Both managers store the installed revision in a lockfile.
+
+To pin one release, replace the range with `version = 'v0.1.0'` for `vim.pack`, or use `tag = 'v0.1.0', version = false` for lazy.nvim. To follow development, use `version = 'main'` for `vim.pack`, or `branch = 'main', version = false` for lazy.nvim. Changing this selection for an already installed plugin also requires the update operation below; restarting alone does not change its installed revision. See [Neovim package specifications](https://neovim.io/doc/user/pack.html#vim.pack.Spec) and [lazy.nvim version selection](https://lazy.folke.io/spec#spec-versioning).
 
 ## Update the plugin
 
@@ -67,11 +69,11 @@ Run `:RivetDoctor`. If Neovim says the command does not exist, check the checkou
 | Language | Tools for the first run | Follow next |
 | --- | --- | --- |
 | C++ | CMake 3.30+, Ninja 1.11+, compiler supporting your chosen standard; modules also need compatible dependency scanning | [C++ first project](/docs/first-project/) |
-| C | CMake 3.30+, Ninja, C compiler supporting C17 (default), C11, or C23 | [C project walkthrough](/docs/c/#first-run-in-neovim) |
-| Python | Python 3.11+; uv only if you choose it | [Python walkthrough](/docs/python/#first-run-in-neovim) |
-| Rust | Cargo and rustc supporting edition 2024 (default) or 2021 | [Rust walkthrough](/docs/rust/#first-run-in-neovim) |
-| Lua | Lua 5.1+ or LuaJIT for portable apps; Neovim for plugin projects | [Lua and plugins](/docs/lua/) |
-| Swift | Swift 6.0+ with SwiftPM; Xcode for Apple application work | [SwiftPM walkthrough](/docs/swift/#first-run-in-neovim) |
+| C | CMake 3.30+, Ninja, C compiler supporting C17 (default), C11, or C23 | [Your first C project](/docs/first-c-project/) |
+| Python | Python 3.11+; uv only if you choose it | [Your first Python project](/docs/first-python-project/) |
+| Rust | Cargo and rustc supporting edition 2024 (default) or 2021 | [Your first Rust project](/docs/first-rust-project/) |
+| Lua | Lua 5.1+ or LuaJIT for portable apps; Neovim for plugin projects | [Your first Lua project](/docs/first-lua-project/) |
+| Swift | Swift 6.0+ with SwiftPM; Xcode for Apple application work | [Your first Swift project](/docs/first-swift-project/) |
 
 C++26 remains the default. The C++ tutorial uses named modules; conventional headers are also supported in C++17/20/23/26. For a simpler first build without module scanning, choose **Headers and source files** or use the [C++ CLI example](/docs/getting-started/#create-a-first-project).
 
@@ -79,6 +81,10 @@ Each walkthrough creates a project in a folder you choose, explains the expected
 
 ## Already have a project?
 
-Open a file inside your existing CMake, Python, Cargo, or SwiftPM project and use `:RivetTask`. You do not need to create a Rivet manifest to build it. Follow [Existing projects](/docs/existing-projects/) for discovery and target selection.
+Open a file inside your existing CMake, Python, Cargo, SwiftPM, or configured Lua project and use `:RivetTask`. You do not need to create a Rivet manifest to use its native tasks. Follow [Existing projects](/docs/existing-projects/) for discovery and target selection.
 
 For your next step, use [parallel computing and CUDA](/docs/hpc/) or [graphics profiles](/docs/graphics/). Those guides keep SDK setup, compilation, and runtime validation separate.
+
+## Document your first API
+
+For C/C++, choose **Doxygen documentation** while personalizing file headers. Add documentation to public declarations as you add code, then generate HTML for readers and XML for documentation tools. The [Doxygen guide](/docs/doxygen/) explains the workflow and the language adapters needed outside Doxygen’s native support. Each first-project walkthrough includes its language’s documentation path.

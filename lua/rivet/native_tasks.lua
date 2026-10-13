@@ -171,9 +171,30 @@ function M.tasks(root, preset, target, options)
     }
     local candidates = M.targets(root)
     local chosen
-    for _, entry in ipairs(candidates) do
-      if entry.name == target or entry.bin == target then
-        chosen = entry
+    if target then
+      for _, entry in ipairs(candidates) do
+        if entry.name == target then
+          chosen = entry
+          break
+        end
+      end
+      if not chosen then
+        local matches, names = {}, {}
+        for _, entry in ipairs(candidates) do
+          if entry.bin == target then
+            matches[#matches + 1] = entry
+            names[#names + 1] = entry.name
+          end
+        end
+        table.sort(names)
+        assert(
+          #matches <= 1,
+          'Ambiguous Cargo binary: '
+            .. target
+            .. '; choose a package::binary target: '
+            .. table.concat(names, ', ')
+        )
+        chosen = matches[1]
       end
     end
     if not target and #candidates == 1 then

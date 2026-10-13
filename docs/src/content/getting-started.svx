@@ -3,10 +3,10 @@ title: CLI quick start
 description: Create a C++ project, review its files, and run the first build.
 section: Start here
 order: 4
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
-The optional CLI shares Rivet's Lua core with Neovim and supports all six bundled languages. This quick start uses C++ with conventional headers. For native language workflows, follow [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), or [C](/docs/c/). First [download the source archive or obtain a checkout](/docs/start-here/#local-development).
+The optional CLI shares Rivet's Lua core with Neovim and supports all six bundled languages. This quick start uses C++ with conventional headers. For another language, follow [Python](/docs/first-python-project/), [Rust](/docs/first-rust-project/), [SwiftPM](/docs/first-swift-project/), [C](/docs/first-c-project/), or [Lua](/docs/first-lua-project/). First [download the source archive or obtain a checkout](/docs/start-here/#local-development).
 
 ## Check the tools
 

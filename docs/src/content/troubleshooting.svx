@@ -3,20 +3,20 @@ title: Troubleshooting
 description: Resolve toolchain, module, cache, and generated-file problems in a predictable order.
 section: Reference
 order: 21
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
-Start with the failed task and its first error. The CMake sections below apply to C/C++; Python, Cargo, and SwiftPM use their native task output and environment. Configuration, compilation, editor diagnostics, and runtime checks establish different things.
+Start with the failed task and its first error. The CMake sections below apply to C/C++; Python, Cargo, SwiftPM, and Lua use their native task output and environment. Configuration, compilation, editor diagnostics, and runtime checks establish different things.
 
 ## No Rivet project found
 
-Commands search above the current file or working directory for `.rivet.json` or native markers: `CMakeLists.txt`, `pyproject.toml`, `Cargo.toml`, and `Package.swift`. CMake discovery prefers a project declaration or presets over a nested source-list fragment. Open a file in the project, change directory to its root, or choose an explicit CLI root:
+Commands search above the current file or working directory for `.rivet.json` or native markers: `CMakeLists.txt`, `pyproject.toml`, `Cargo.toml`, `Package.swift`, `.luarc.json`, `.luacheckrc`, and `.stylua.toml`. CMake discovery prefers a project declaration or presets over a nested source-list fragment. Open a file in the project, change directory to its root, or choose an explicit CLI root:
 
 ```sh
 rivet build --root ./engine
 ```
 
-Native build tasks work without an Rivet manifest. File and target generation requires one; discovering an existing project does not adopt its source lists. See [Existing projects](/docs/existing-projects/).
+Native tasks and generic file creation work without a Rivet manifest. Generated target changes and registered source-list operations require one; discovering an existing project does not adopt its source lists. Use `--root .` for CLI file creation in an ordinary folder. See [Existing projects](/docs/existing-projects/).
 
 ## What Doctor checks
 
@@ -29,6 +29,7 @@ Run `:RivetDoctor` in the project, or `rivet doctor --root PATH`. Warnings descr
 | Python | Selected interpreter/environment, Python 3.11+, Ruff, packaging `build` for ordinary Python, selected pytest, uv where applicable | Imports, dependency compatibility, package creation, test results |
 | Rust | Cargo availability, rustfmt/Clippy commands, native target metadata | Successful compilation, lint, tests, runtime |
 | Swift | Swift availability, `swift format`, native target metadata | Package compilation, tests, Apple app integration |
+| Lua | Selected runtime/version and optional StyLua/Luacheck availability | Syntax, module loading, assertions, application or plugin behavior |
 | OpenMP / MPI / CUDA | Relevant configured CMake compiler/runtime settings | Working runtimes, rank/thread behavior, NVCC host compatibility, actual devices |
 | Metal | macOS, Xcode Metal compiler, configured header path | Shader compilation and GPU pixel check |
 | Dawn / Vulkan / OpenGL | Configured SDK/loader/GLFW locations; explains runtime prerequisites | Vulkan shader tools and validation layers, working device/context, actual rendering |

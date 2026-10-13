@@ -120,6 +120,10 @@ function M.make(language)
       not (language == 'rust' and value == 'std'),
       'Rust project name conflicts with the standard library: std'
     )
+    assert(
+      not (language == 'c' and value == 'stdio'),
+      'C project name would create a header that shadows the standard library: stdio.h'
+    )
     assert(not (language == 'c' and build_names[value]), 'Reserved CMake build target: ' .. value)
     return value
   end

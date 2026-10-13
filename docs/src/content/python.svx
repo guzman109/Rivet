@@ -3,7 +3,7 @@ title: Python projects
 description: Create a Python package or CLI and use your selected interpreter, environment, and native tools.
 section: Guides
 order: 19
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
 Choose Python in `:RivetNew`, then an application or library and either ordinary Python or uv. Review includes `pyproject.toml`, a `src/` package, a unittest correctness test, and Python ignore rules. An application also has `__main__.py` and a packaging entry point. No personal identity or environment is inferred into generated files.
@@ -22,7 +22,7 @@ nvim
 2. Choose Git initialization or skip it, and choose your comment header or **No header**. Select **Application** and **Python / existing environment**.
 3. Review the files and press `c`. Open `src/analysis_demo/__main__.py`, then run `:RivetTask run`. Choose Debug; the application prints `42` and exits successfully.
 4. Run `:RivetTask test`. The unittest runner should report one passing test (`OK`). No package installation is needed for this starter.
-5. Run `:RivetFile` and name the module `feature`. Add `from . import feature` in `__main__.py` when you want to use it. Save before repeating Run or Test.
+5. Run `:RivetFile`, select **python**, choose **Source file** after checking the header preview, and name the module `feature`. Add `from . import feature` in `__main__.py` when you want to use it. Save before repeating Run or Test.
 
 An intentional syntax error in a saved `.py` file appears in task output; `:copen` opens its file location. Correct it and run `:RivetTask repeat`. For uv, choose that manager instead and explicitly run Configure to sync before the first Run or Test.
 

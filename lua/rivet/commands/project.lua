@@ -78,9 +78,11 @@ function M.file()
           end
         end
         steps = require('rivet.file_templates').questions(spec, 'c')
+        steps = require('rivet.file_templates').with_header_previews(steps, spec, 'c')
         table.insert(steps, 2, { key = 'target', title = 'C/C++ target', items = targets })
       else
         steps = require('rivet.file_templates').questions(spec, item.id)
+        steps = require('rivet.file_templates').with_header_previews(steps, spec, item.id)
       end
       require('rivet.wizard').run(
         options,
@@ -249,7 +251,15 @@ function M.header_defaults()
   local spec = project.load(root)
   require('rivet.header_ui').configure(
     spec.comment_header,
-    { filename = 'example.cpp', project = spec.name, language = spec.language },
+    {
+      filename = 'example.'
+        .. (
+          ({ c = 'c', cpp = 'cpp', python = 'py', rust = 'rs', swift = 'swift', lua = 'lua' })[spec.language]
+          or 'cpp'
+        ),
+      project = spec.name,
+      language = spec.language,
+    },
     protected(function(value)
       review(root, project.header_plan(root, value))
     end)

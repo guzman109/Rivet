@@ -6,7 +6,7 @@ order: 12
 updated: '2026-10-13'
 ---
 
-Use `:RivetFile` or `rivet file` in a project or an ordinary folder. The editor asks for the language first, then the file arrangement. A file in the project’s primary language uses its provider’s build registration; other languages create tracked files without changing the host build. Use `--language` for the same choice in the CLI. Every operation previews its files before Neovim applies them. The build-system changes depend on the provider:
+Use `:RivetFile` or `rivet file` in a project or an ordinary folder. In an ordinary folder without a project marker, give the CLI `--root .` to select the destination. The editor asks for the language first, then the file arrangement. A file in the project’s primary language uses its provider’s build registration; other languages create tracked files without changing the host build. Use `--language` for the same choice in the CLI. Every operation previews its files before Neovim applies them. The build-system changes depend on the provider:
 
 | Provider | File addition | Target addition |
 | --- | --- | --- |
@@ -58,7 +58,7 @@ In the public-library layout, a bare header, pair, or class name puts the public
 
 Header guards use the project's `pragma` or `ifndef` preference. Named module units do not use header guards. In standard-library module mode, source templates place `import std;` after local includes, and module units place it after their module declaration.
 
-New sources, headers, and module units also inherit the project's optional [file comment header](/docs/comment-headers/), with their own filename. `:RivetHeader` changes one file; `:RivetHeaderDefaults` changes what future templates use.
+New sources, headers, and module units also inherit the project's optional [file comment header](/docs/comment-headers/), with their own filename. The file-kind picker previews that header; Python, Rust, and Swift show a single **Source file** choice before asking for the path. Foreign-language files render the saved details using the selected language's comment syntax. An ordinary folder without header defaults shows an explicit not-configured message. `:RivetHeader` changes one file; `:RivetHeaderDefaults` changes what future templates use in a Rivet-owned project.
 
 ## Add a module pair or a separate implementation
 
@@ -69,9 +69,7 @@ rivet file src/memory/pool --kind module_pair \
   --module engine.memory.pool --target engine_core
 ```
 
-
-
-The first command creates a usable interface skeleton. Put function bodies there for a single-file module. Run the second command only if you want to define those functions in a separate implementation unit. Do not define the same function in both files.
+Alternatively, create the interface first and add its implementation later. Use these commands instead of the pair above; the same module name and destination cannot be created twice:
 
 ```sh
 rivet file src/memory/pool --kind module \
@@ -81,7 +79,7 @@ rivet file src/memory/pool_impl --kind module_impl \
   --module engine.memory.pool --target engine_core
 ```
 
-The implementation must refer to an existing module and belong to its owning target. In Neovim, selecting the module automatically selects that target. The declaration and definition syntax is explained in [Modules and headers](/docs/modules/).
+The `module` command creates an interface skeleton. Put function bodies there for a single-file module, or declarations there and definitions in the `module_impl` file. Do not define the same function in both. The implementation must refer to an existing module and belong to its owning target. In Neovim, selecting the module automatically selects that target. The declaration and definition syntax is explained in [Modules and headers](/docs/modules/).
 
 ## Add a build target
 

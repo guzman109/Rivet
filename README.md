@@ -10,6 +10,9 @@ written.
 - **Modern C++ without guesswork.** C++17 through C++26 with CMake presets,
   Ninja, and CPM. Named modules, `import std;`, headers, and layout are
   separate, explicit choices.
+- **Document the API alongside the code.** Doxygen headers and a
+  [Doxygen HTML/XML guide](docs/src/content/doxygen.svx) help connect C/C++
+  projects to documentation tools.
 - **Native tools, not a new build system.** Generated projects are ordinary
   CMake, `pyproject.toml`, Cargo, or SwiftPM projects. Existing projects work
   without conversion.
@@ -117,6 +120,8 @@ documentation site ([development guide](docs/README.md)):
   [CMake and tasks](docs/src/content/cmake.svx),
   [styles and layouts](docs/src/content/styles-layouts.svx), and
   [files and targets](docs/src/content/templates.svx)
+- [Your first project in each language](docs/src/content/start-here.svx),
+  [Doxygen API documentation](docs/src/content/doxygen.svx)
 - Languages: [C](docs/src/content/c.svx), [Python](docs/src/content/python.svx),
   [Rust](docs/src/content/rust.svx), [SwiftPM](docs/src/content/swift.svx),
   [Lua and Neovim plugins](docs/src/content/lua.svx);

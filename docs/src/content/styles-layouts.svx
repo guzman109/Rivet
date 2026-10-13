@@ -3,10 +3,10 @@ title: Styles and layouts
 description: Compare the seven formatter presets and three project layouts without tying style to a domain.
 section: Guides
 order: 14
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
-These choices belong to the **C++ provider**. Formatting and folder structure are separate: pick a style that makes the code comfortable to read, then a layout that reflects the project's interfaces. Python, Cargo, and SwiftPM use the conventions and formatters described in their language guides.
+These choices belong to the **C++ provider**. Formatting and folder structure are separate: pick a style that makes the code comfortable to read, then a layout that reflects the project's interfaces. Python, Cargo, SwiftPM, and Lua use the conventions and formatters described in their language guides.
 
 ## Compare formatting presets
 

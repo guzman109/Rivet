@@ -3,7 +3,7 @@ title: Swift packages and Xcode
 description: Build SwiftPM executables and libraries, then hand Apple application work to Xcode.
 section: Guides
 order: 21
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
 Choose Swift in `:RivetNew` for a SwiftPM executable or library. Generated packages use Swift tools version 6.0, a reusable core target, and XCTest coverage. Applications depend on the core target.
@@ -22,7 +22,7 @@ nvim
 2. Choose Git and header preferences, then **Application**. Review `Package.swift`, sources, and tests; press `c` to create them.
 3. Open `Sources/personal_tool/main.swift`. Run `:RivetTask run`, select Debug, and expect `42`.
 4. Run `:RivetTask test`. The XCTest correctness test should pass. SwiftPM may print additional test-runner summaries.
-5. Run `:RivetFile`, name it `Feature`, and select `personal_toolCore`. Add implementation under that target, save, and repeat Build or Test. SwiftPM automatically includes sources in the target directory.
+5. Run `:RivetFile`, select **swift**, choose **Source file** after checking the header preview, name it `Feature`, and select `personal_toolCore`. Add implementation under that target, save, and repeat Build or Test. SwiftPM automatically includes sources in the target directory.
 
 For a diagnostic, temporarily misspell `sum` in `main.swift`, save, and Build. Open `:copen`, fix the selected error, and `:RivetTask repeat`. Use `:RivetTask xcode` on macOS to continue in Xcode.
 
@@ -50,4 +50,4 @@ Format and Lint use the toolchain's `swift format`; a toolchain without it needs
 
 On macOS, `:RivetTask xcode` opens `Package.swift` in Xcode. Use packages for reusable logic and testable components; use Xcode for SwiftUI application targets, signing, simulators, previews, and platform deployment. Rivet does not generate or rewrite an Xcode project.
 
-Existing `Package.swift` projects work without an Rivet manifest. Use SwiftPM or edit the native manifest for dependencies. Your existing package structure and lockfile remain authoritative. [SwiftUI](https://developer.apple.com/swiftui/).
+Existing `Package.swift` projects work without a Rivet manifest. Use SwiftPM or edit the native manifest for dependencies. Your existing package structure and lockfile remain authoritative. [SwiftUI](https://developer.apple.com/swiftui/).

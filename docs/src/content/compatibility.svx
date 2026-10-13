@@ -3,10 +3,10 @@ title: Compatibility
 description: Supported C++ modes, tested toolchain combinations, and current boundaries.
 section: Reference
 order: 24
-updated: '2026-10-12'
+updated: '2026-10-13'
 ---
 
-Rivet bundles C++, C, Python, Rust, and SwiftPM providers. The editor requires Neovim 0.11 or newer. The optional CLI uses Lua or LuaJIT; the process and filesystem adapter targets macOS and Linux.
+Rivet bundles C++, C, Python, Rust, SwiftPM, and Lua providers. The editor requires Neovim 0.11 or newer. The optional CLI uses Lua or LuaJIT; the process and filesystem adapter targets macOS and Linux.
 
 ## Language modes
 
@@ -64,13 +64,14 @@ Projects stay portable by keeping machine-specific compiler and SDK paths in `CM
 | Python | Package/CLI creation, source checks, run, tests, environment selection |
 | Cargo 1.98.1 | App/library/workspace, check/build/test/run/fmt/Clippy, extra binary |
 | Apple Swift 6.4 | App/library, build/run/test, format/lint, source addition |
+| Lua / LuaJIT / Neovim | Lua app checks/run/tests, libraries, plugin tests, modules and scripts; optional tools are checked separately |
 
 SDKs used for validation live in temporary directories; project creation does not download them. The [graphics guide](/docs/graphics/) identifies tested Metal-cpp and Dawn revisions. Missing GPU/context returns 77 and is reported as a skipped CTest, not a passing hardware test.
 
 ## Current boundaries
 
-Existing CMake, Python, Cargo, and SwiftPM projects can run native tasks without a Rivet manifest. File moves/removals and explicit module renames operate on registered C/C++ files. They preserve source-list ownership and review snapshots; C++ identifier/include refactoring and adopting arbitrary CMake source lists remain separate work.
+Existing CMake, Python, Cargo, SwiftPM, and configured Lua projects can run native tasks without a Rivet manifest. Generic file creation also preserves native ownership. File moves/removals operate on registered C/C++ files and recorded foreign-language files; explicit module renames apply to C++ modules. C++ identifier/include refactoring and adopting arbitrary CMake source lists remain separate work.
 
-Python's Build task checks syntax; Package builds a distribution through installed packaging tools. Native package managers own dependencies and lockfiles. SwiftUI apps, signing, simulators, and previews remain in Xcode. WebGPU support is native; browser deployment is not generated.
+Python's Build task checks syntax; Package builds a distribution through installed packaging tools. Lua's Check and Build validate syntax without executing source bodies; Test and Run execute code in the selected runtime. Native package managers own dependencies and lockfiles. SwiftUI apps, signing, simulators, and previews remain in Xcode. WebGPU support is native; browser deployment is not generated.
 
 Cluster/profiler integration is an explicit argv-hook interface. There is no background job monitor, resource allocator, or automatic remote deployment.

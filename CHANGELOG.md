@@ -14,18 +14,25 @@ First public release of Rivet.nvim, formerly Outset.
 - `:RivetConfig` / `rivet config`: explained common clang-format, clang-tidy, and clangd settings, installed-tool validation, and YAML access for advanced options.
 - `:RivetUpgrade` / `rivet upgrade`: supplementary template updates using recorded baselines, local-edit preservation, missing-file restoration, and reviewed version metadata.
 - Retained output per project, visible task controls, Enter to close completed output, `:RivetOutput`, `:RivetStop`, and optional `task_output = 'close-on-success'`.
+- A first-project walkthrough for every language, Doxygen API documentation/HTML/XML guidance, and file-template header previews.
 - Neovim help, provider interfaces, documentation, license templates, and reviewed Outset migration.
 
 ### Fixed
 
 - Preserve private/executable file permissions during replacements and moves.
 - Prevent project modules from shadowing Python test/syntax-check tools and falsely reporting success.
+- Keep Python Doctor probes independent of project files that shadow optional tools.
 - Preserve C++ raw-string contents during module renames.
 - Keep another project's running output and stop controls available.
+- Complete tasks and retain raw output when a provider renderer or diagnostic hook fails.
+- Preserve Cargo application JSON after build completion and reject ambiguous workspace binary names.
+- Resolve embedded Lua modules from the project checkout, including when launched from another directory.
+- Match file previews to generated headers, including mixed-language files and custom preview callbacks.
 - Pass the selected configuration to multi-configuration CTest fallback tasks.
 - Reject unknown C/Swift file targets and conflicting scaffold names.
 - Format added C++ files using the current project `.clang-format`.
 - Recognize quoted/commented clangd database paths.
+- Keep technical documentation search terms unchanged by browser autocorrect.
 
 ### Compatibility and updates
 

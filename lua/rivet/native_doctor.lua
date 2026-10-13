@@ -61,6 +61,8 @@ function M.inspect(root, preset, options)
     end
     local probe = rt.run({
       tool,
+      '-E',
+      '-P',
       '-c',
       'import sys; print(sys.executable); print(sys.prefix); raise SystemExit(sys.version_info < (3,11))',
     }, { cwd = root })
@@ -78,11 +80,13 @@ function M.inspect(root, preset, options)
     for _, module in ipairs(modules) do
       local found = rt.run({
         tool,
+        '-E',
+        '-P',
         '-c',
         'import importlib.util; raise SystemExit(importlib.util.find_spec("'
           .. module
           .. '") is None)',
-      })
+      }, { cwd = root })
       result[#result + 1] = {
         level = found.code == 0 and 'ok' or 'warn',
         message = module

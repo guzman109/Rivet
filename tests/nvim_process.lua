@@ -287,6 +287,110 @@ assert(
 text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
 assert(text:find('first line\nsecond line', 1, true), 'Multiline output missing')
 
+-- Provider presentation errors must not strand a completed task or lose raw output.
+for _, hook in ipairs({ 'render_line', 'diagnostics' }) do
+  done = false
+  local calls, notifications = 0, #errors
+  local options = {}
+  options[hook] = function()
+    calls = calls + 1
+    error('broken provider ' .. hook)
+  end
+  ui.run(
+    temporary_root,
+    { '/usr/bin/printf', 'first output\nsecond output\n' },
+    'provider error',
+    function(ok, result)
+      assert(ok and result.stdout == 'first output\nsecond output\n')
+      done = true
+    end,
+    options
+  )
+  assert(
+    vim.wait(3000, function()
+      return done
+    end),
+    'Provider error interrupted task completion'
+  )
+  assert(not ui.is_running(temporary_root), 'Provider error stranded running state')
+  assert(calls == 1 and #errors == notifications + 1, 'Provider failure was reported repeatedly')
+  text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
+  assert(text:find('first output\nsecond output\nExit status: 0', 1, true))
+end
+done = false
+ui.run(temporary_root, { '/bin/echo', 'malformed diagnostic' }, 'invalid diagnostic', function(ok)
+  assert(ok)
+  done = true
+end, {
+  diagnostics = function()
+    return { filename = 'source.c', lnum = {}, text = 'invalid provider line number' }
+  end,
+})
+assert(vim.wait(3000, function()
+  return done
+end))
+assert(not ui.is_running(temporary_root))
+text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
+assert(text:find('malformed diagnostic\nExit status: 0', 1, true), 'Quickfix error lost output')
+
+-- Cargo's build JSON ends before the launched application's arbitrary output.
+local cargo = vim.fn.exepath('cargo')
+if cargo ~= '' then
+  local fixture = vim.fn.tempname()
+  vim.fn.mkdir(fixture .. '/src', 'p')
+  vim.fn.writefile({
+    '[package]',
+    'name = "rivet_output_fixture"',
+    'version = "0.1.0"',
+    'edition = "2021"',
+  }, fixture .. '/Cargo.toml')
+  local artifact = '{"reason":"compiler-artifact","target":{"name":"USER"}}'
+  local message = '{"reason":"compiler-message","message":{"message":"USER",'
+    .. '"spans":[{"is_primary":true,"file_name":"fake.rs","line_start":2,"column_start":1}]}}'
+  vim.fn.writefile({
+    'fn main() {',
+    '    let unused = 1;',
+    '    println!("{}", r#"' .. artifact .. '"#);',
+    '    println!("{}", r#"' .. message .. '"#);',
+    '    eprintln!("{}", r#"' .. artifact .. '"#);',
+    '}',
+  }, fixture .. '/src/main.rs')
+  local argv = {
+    'env',
+    'CARGO_HOME=' .. fixture .. '/cargo-home',
+    'CARGO_TARGET_DIR=' .. fixture .. '/target',
+    cargo,
+    'run',
+    '--offline',
+    '--message-format=json',
+    '--',
+  }
+  local diagnostics = require('rivet.native_diagnostics')
+  done = false
+  ui.run(fixture, argv, 'Cargo application output', function(ok, result)
+    assert(ok, result.stderr)
+    done = true
+  end, { diagnostics = diagnostics.parse_for(argv), render_line = diagnostics.render_for(argv) })
+  assert(
+    vim.wait(30000, function()
+      return done
+    end),
+    'Offline Cargo fixture did not complete'
+  )
+  text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
+  assert(text:find('Build finished', 1, true) and text:find('Built rivet_output_fixture', 1, true))
+  assert(text:find(artifact, 1, true) and text:find(message, 1, true), 'Application JSON changed')
+  assert(not text:find('Built USER', 1, true), 'Application artifact was decoded as Cargo output')
+  local compiler_warning = false
+  for _, item in ipairs(vim.fn.getqflist()) do
+    local path = vim.api.nvim_buf_get_name(item.bufnr)
+    assert(not path:match('/fake%.rs$'), 'Application JSON became a compiler diagnostic')
+    compiler_warning = compiler_warning or path:match('/src/main%.rs$') ~= nil
+  end
+  assert(compiler_warning, 'Real Cargo compiler warning was lost')
+  vim.fn.delete(fixture, 'rf')
+end
+
 -- Automatic close keeps output accessible and preserves the user's editor focus.
 done = false
 ui.run(

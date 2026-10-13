@@ -3,7 +3,7 @@ title: CLI reference
 description: Shared commands, language-specific creation options, native tasks, and preview behavior.
 section: Reference
 order: 20
-updated: '2026-10-10'
+updated: '2026-10-13'
 ---
 
 The CLI is optional. [Download the source archive or obtain a checkout](/docs/start-here/#local-development), then run its `bin/rivet` or add that directory to `PATH`. The launcher uses Lua by default; select LuaJIT with `RIVET_LUA=luajit rivet doctor`. Its filesystem and process adapter supports macOS and Linux.
@@ -74,7 +74,7 @@ Provider-specific C++ flags such as formatting style, modules, or layout do not 
 
 ## Add files and targets
 
-Generated mutations require `.rivet.json`. Run inside that project or add `--root PATH`:
+Target changes and build-registered file additions require `.rivet.json`. Run inside that project or add `--root PATH`. Generic file templates also work in external projects or ordinary folders, with `--root .` when no project marker is available:
 
 ```sh
 rivet file Renderer --kind class --target engine_core --preview
@@ -84,11 +84,12 @@ rivet target renderer --kind library --link-to engine --preview
 
 | Provider | `file` behavior | `target` behavior |
 | --- | --- | --- |
-| C++ | `source`, `header`, `pair`, `class`, `module`, `module_impl`, `c_source`, or `c_header` | Application or static library; optional `--link-to` |
-| C | A named `.c` source in the chosen target | Application or static library |
+| C++ | `source`, `header`, `pair`, `class`, `module`, `module_pair`, `module_impl`, `c_source`, `c_header`, or `c_pair` | Application or static library; optional `--link-to` |
+| C | Source, header, or pair in the chosen target | Application or static library |
 | Python | A named module under the generated package | Add entry points directly in `pyproject.toml` |
 | Rust | A named `.rs` file; declare it in the parent module yourself | Additional application under `src/bin/`; use Cargo for new libraries/workspace members |
 | Swift | A source under a recorded target's conventional directory; preserves `Package.swift` | Application or library; refuses an externally edited generated package manifest |
+| Lua | Module returning a table or runnable script | Reusable library or script executable |
 
 For a C++ `module_impl`, provide `--module` with an existing module name. See [Files and targets](/docs/templates/) for path rules and [SwiftPM](/docs/swift/#native-tasks-and-targets) for customized packages.
 
@@ -103,11 +104,11 @@ rivet dependency fmt --repository fmtlib/fmt --tag 11.2.0 \
 
 `--version` aliases `--tag`; use an exact revision, not a version range. Scaffolding does not fetch it; a later configure can. See [CPM dependencies](/docs/dependencies/).
 
-`move FROM TO`, `remove PATH`, and `module-rename FROM TO` create plans for registered C/C++ files. `repair MANAGED_FILE` backs up an edited managed file and restores its recorded snapshot. These commands, plus `new`, `file`, `target`, and `dependency`, accept `--preview`. Omit it to apply the CLI plan. Preview is not a dry-run mode for build tasks. See [Existing projects and file changes](/docs/existing-projects/) and [recovery](/docs/troubleshooting/#recover-an-edited-managed-file).
+`move FROM TO` and `remove PATH` create plans for registered C/C++ sources or recorded foreign-language files; `module-rename FROM TO` applies to C++ modules. `repair MANAGED_FILE` backs up an edited managed file and restores its recorded snapshot. These commands, plus `new`, `file`, `target`, and `dependency`, accept `--preview`. Omit it to apply the CLI plan. Preview is not a dry-run mode for build tasks. See [Existing projects and file changes](/docs/existing-projects/) and [recovery](/docs/troubleshooting/#recover-an-edited-managed-file).
 
 ## Project discovery and tasks
 
-Commands search above the current directory for an Rivet manifest or a supported native project. CMake discovery skips ordinary nested source-list fragments in favor of a parent project declaration or presets. `--root PATH` selects a root explicitly. Existing CMake, Python, Cargo, and SwiftPM projects can run tasks without `.rivet.json`; they do not automatically gain generated-file ownership.
+Commands search above the current directory for a Rivet manifest or a supported native project. CMake discovery skips ordinary nested source-list fragments in favor of a parent project declaration or presets. `--root PATH` selects a root explicitly. Existing CMake, Python, Cargo, SwiftPM, and configured Lua projects can run tasks without `.rivet.json`; they do not automatically gain generated-file ownership. Generic file creation in an ordinary folder uses an explicit destination such as `--root .`.
 
 | Provider | Available tasks and sequencing |
 | --- | --- |
@@ -115,6 +116,7 @@ Commands search above the current directory for an Rivet manifest or a supported
 | Python | Configure environment explicitly; Check/Build checks syntax; Test, Run, Format, Lint, and Package use selected native tools |
 | Rust | Configure reads metadata; Check, Build, Test, Run, Format, Lint, and Package invoke Cargo |
 | Swift | Configure reads metadata; Check/Build invokes SwiftPM build; Test, Run, Format, Lint; Xcode handoff on macOS |
+| Lua | Configure reports runtime version; Check/Build check syntax; Test and Run execute scripts; Format/Lint use optional StyLua/Luacheck |
 
 Workflows stop at the first failed step. No task silently installs optional formatters or linters. Native tools retain their ordinary dependency-resolution behavior: for example, Cargo builds may download declared dependencies, and an explicit uv Configure syncs its environment.
 
@@ -127,7 +129,7 @@ rivet targets --root ./engine
 
 For CMake, `--preset NAME` selects a configure preset. `--build-preset` and `--test-preset` select associated native presets; a unique association is selected automatically. `--build-target` overrides Build's target; Run builds the application selected with `--target`. A fresh existing project can be configured and run in one command. If it has several executable targets, choose one explicitly. [CMake and tasks](/docs/cmake/) covers custom presets.
 
-Python, Cargo, and SwiftPM use `debug` or `release` choices, not CMake preset files. Cargo binary selectors can use `package::binary`. Explicit runtime arguments, environments, working directories, and optional `benchmark`, `profile`, `submit`, `status`, and `cancel` hooks live in `.rivet.local.json`. See [Runtime options](/docs/task-options/).
+Python, Cargo, SwiftPM, and Lua use `debug` or `release` choices, not CMake preset files. Cargo binary selectors can use `package::binary`. Explicit runtime arguments, environments, working directories, and optional `benchmark`, `profile`, `submit`, `status`, and `cancel` hooks live in `.rivet.local.json`. See [Runtime options](/docs/task-options/).
 
 ## Inspect and configure
 

@@ -25,8 +25,30 @@ local ok, err = pcall(function()
       end)
     end
   end)
+  test('template previews show the configured header and final files use real names', function()
+    local spec = model.plan({
+      name = 'host',
+      modules = true,
+      comment_header = { style = 'doc', author = 'Ada', description = 'Host interfaces' },
+    }).spec
+    local steps = model.questions('file', spec)
+    for _, item in ipairs(steps[1].items) do
+      assert(
+        item.preview:find('@file example.', 1, true) and item.preview:find('@author Ada', 1, true),
+        'Missing preview header'
+      )
+    end
+    local plan =
+      model.add_file(spec, { name = 'src/render', kind = 'module_pair', module = 'host.render' })
+    assert(plan.files['src/render.cppm']:find('@file render.cppm', 1, true))
+    assert(plan.files['src/render.cpp']:find('@file render.cpp', 1, true))
+  end)
   test('foreign source files preserve host targets', function()
-    local spec = model.plan({ name = 'host', modules = false }).spec
+    local spec = model.plan({
+      name = 'host',
+      modules = false,
+      comment_header = { style = 'compact', author = 'Ada' },
+    }).spec
     local original = require('rivet.json').encode(spec.targets)
     for _, language in ipairs({ 'python', 'rust', 'swift', 'lua', 'text' }) do
       local plan = model.add_file(spec, {
@@ -37,7 +59,69 @@ local ok, err = pcall(function()
       assert(require('rivet.json').encode(plan.spec.targets) == original)
       assert(next(plan.files) and next(plan.spec.file_languages))
       assert(not plan.files['cmake/RivetTargets.cmake'])
+      if language ~= 'text' then
+        local headers = require('rivet.tasks').service({ language = language }, 'headers')
+        for path, body in pairs(plan.files) do
+          local header = headers.render(spec.comment_header, { filename = path, project = 'host' })
+          assert(body:sub(1, #header) == header and header:find('Ada', 1, true))
+        end
+      end
     end
+  end)
+  test('every built-in file wizard previews its language header', function()
+    for _, language in ipairs(model.list_languages()) do
+      local spec = model.plan({
+        language = language,
+        name = 'sample',
+        comment_header = { style = 'compact', author = 'Ada' },
+      }).spec
+      local steps = model.questions('file', spec)
+      assert(steps[1].key == 'kind' and steps[1].items[1].preview:find('Ada', 1, true), language)
+    end
+  end)
+  test('C++ documentation headers adapt to Python line-comment headers', function()
+    local spec = model.plan({
+      name = 'host',
+      comment_header = { style = 'doc', author = 'Ada' },
+    }).spec
+    local steps =
+      templates.with_header_previews(templates.questions(spec, 'python'), spec, 'python')
+    assert(steps[1].items[1].preview:find('# Author: Ada', 1, true))
+    local plan = model.add_file(spec, { name = 'scripts/helper', language = 'python' })
+    assert(plan.files['scripts/helper.py']:find('# Author: Ada', 1, true))
+    assert(plan.spec.comment_header.style == 'doc', 'Foreign file changed project defaults')
+  end)
+  test('preview decoration preserves lazy functions and line tables', function()
+    local spec = { name = 'sample', comment_header = { style = 'compact', author = 'Ada' } }
+    local calls = 0
+    local steps = {
+      {
+        key = 'kind',
+        items = function(values)
+          return {
+            { id = 'header', label = 'Header', preview = { '#pragma once', values.name } },
+            {
+              id = 'source',
+              label = 'Source',
+              preview = function(item)
+                calls = calls + 1
+                return { '// ' .. item.label, 'int value = 42;' }
+              end,
+            },
+            { id = 'pair', description = { 'Two files', 'One review' } },
+            { id = 'module' },
+          }
+        end,
+      },
+    }
+    local decorated = templates.with_header_previews(steps, spec, 'cpp')
+    local items = decorated[1].items({ name = 'specific' })
+    assert(calls == 0 and items[1].preview:find('#pragma once\nspecific', 1, true))
+    assert(items[2].preview(items[2]):find('// Source\nint value = 42;', 1, true))
+    assert(calls == 1 and items[2].preview(items[2]):find('Ada', 1, true))
+    assert(items[3].preview:find('Two files\nOne review', 1, true))
+    assert(items[4].preview:find('module', 1, true))
+    assert(type(steps[1].items({ name = 'original' })[1].preview) == 'table')
   end)
   test('C pairs register both files in C++ host', function()
     local plan = model.add_file(

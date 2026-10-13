@@ -45,7 +45,7 @@ local function succeeded(result)
   assert(result.code == 0, result.stdout .. result.stderr)
 end
 
-test('new Python tool names and Rust std are rejected while defaults are normalized', function()
+test('conflicting native project names are rejected while defaults are normalized', function()
   for _, name in ipairs({ 'unittest', 'compileall', 'pytest', 'ruff', 'build' }) do
     assert(model.default_name(name, 'python') == 'project_' .. name)
     rejects(function()
@@ -60,6 +60,11 @@ test('new Python tool names and Rust std are rejected while defaults are normali
     model.plan({ language = 'rust', name = 'std' })
   end)
   assert(model.default_name('std', 'rust') == 'project_std')
+  rejects(function()
+    model.plan({ language = 'c', name = 'stdio' })
+  end)
+  assert(model.default_name('stdio', 'c') == 'project_stdio')
+  assert(model.normalize({ language = 'c', name = 'stdio' }).name == 'stdio')
   for _, name in ipairs({ 'core', 'alloc' }) do
     assert(model.plan({ language = 'rust', name = name }).spec.name == name)
   end
@@ -155,6 +160,59 @@ test('normal Python tests keep the selected interpreter and application src impo
   end
 end)
 
+test('Python Doctor discovers installed runners without project shadows', function()
+  local root = create('python', 'doctor_python')
+  local python = require('rivet.native_tasks').python(root, {})
+  local environment = rt.join(root, 'tool-environment')
+  succeeded(rt.run({ python, '-E', '-P', '-m', 'venv', '--without-pip', environment }))
+  project.apply(
+    root,
+    require('rivet.task_options').plan(root, { python = rt.join(environment, 'bin/python') })
+  )
+  write(root, 'ruff.py', 'raise RuntimeError("This is application source, not Ruff")\n')
+  write(root, 'build.py', 'raise RuntimeError("This is application source, not build")\n')
+  local result = rt.run(
+    { rt.absolute(repo .. '/bin/rivet'), 'doctor', '--root', root },
+    { cwd = root }
+  )
+  succeeded(result)
+  assert(result.stdout:find('WARN: ruff missing in this interpreter', 1, true), result.stdout)
+  assert(result.stdout:find('WARN: build missing in this interpreter', 1, true), result.stdout)
+end)
+
+test(
+  'Rust run selection rejects ambiguous binary names and accepts exact package targets',
+  function()
+    if not rt.executable('cargo') then
+      print('SKIP Rust binary selection: Cargo is unavailable')
+      return
+    end
+    local root = rt.join(base, 'ambiguous_rust')
+    write(root, 'Cargo.toml', '[workspace]\nmembers=["a", "b"]\nresolver="3"\n')
+    for _, name in ipairs({ 'a', 'b' }) do
+      write(
+        root,
+        name .. '/Cargo.toml',
+        '[package]\nname="'
+          .. name
+          .. '"\nversion="0.1.0"\nedition="2024"\n[[bin]]\nname="tool"\npath="src/main.rs"\n'
+      )
+      write(root, name .. '/src/main.rs', 'fn main() {}\n')
+    end
+    write(root, 'a/src/bin/solo.rs', 'fn main() {}\n')
+    local native = require('rivet.native_tasks')
+    local message = rejects(function()
+      native.tasks(root, 'debug', 'tool', { task = 'run' })
+    end)
+    assert(message:find('Ambiguous Cargo binary', 1, true), message)
+    assert(message:find('a::tool, b::tool', 1, true), message)
+    local exact = table.concat(native.tasks(root, 'debug', 'a::tool', { task = 'run' }).run, ' ')
+    assert(exact:find('--package a --bin tool --', 1, true), exact)
+    local unique = table.concat(native.tasks(root, 'debug', 'solo', { task = 'run' }).run, ' ')
+    assert(unique:find('--package a --bin solo --', 1, true), unique)
+  end
+)
+
 test('native source templates accept optional extensions and explicit relative paths', function()
   for _, case in ipairs({
     { 'python', 'py', 'src/sample/feature.py' },
@@ -195,7 +253,8 @@ end)
 
 test('C headers and pairs use project protection and actual include directories', function()
   for _, guard in ipairs({ 'ifndef', 'pragma' }) do
-    local root = create('c', 'c_' .. guard, { header_guard = guard })
+    local name = guard == 'ifndef' and model.default_name('stdio', 'c') or 'c_' .. guard
+    local root = create('c', name, { header_guard = guard })
     local pair = project.file_plan(root, { name = 'features/deep/feature.c', kind = 'pair' })
     assert(pair.files['features/deep/feature.c'] and pair.files['features/deep/feature.h'])
     assert(

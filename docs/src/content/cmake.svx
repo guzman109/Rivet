@@ -3,10 +3,10 @@ title: CMake and tasks
 description: Understand generated build files, edit local cache options, and run tasks.
 section: Guides
 order: 11
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
-Generated C/C++ projects are ordinary CMake projects with explicit source lists. This guide describes their task workflow and the C++ build-file layout; C uses a smaller set of generated files. Python, Rust, and SwiftPM use their [native tasks](/docs/cli/#project-discovery-and-tasks).
+Generated C/C++ projects are ordinary CMake projects with explicit source lists. This guide describes their task workflow and the C++ build-file layout; C uses a smaller set of generated files. Python, Rust, SwiftPM, and Lua use their [native tasks](/docs/cli/#project-discovery-and-tasks).
 
 ## Know which files to edit
 

@@ -26,6 +26,20 @@ require('rivet.header_ui').edit(root, {
 local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
 assert(text:match('^#!/usr/bin/env python3\n# coding: utf%-8\n#'), 'Python preamble moved')
 assert(text:find('# Author: Ada Lovelace', 1, true))
+-- Header syntax follows the current file in a mixed-language project.
+local lua_file = root .. '/scripts/helper.lua'
+vim.fn.mkdir(root .. '/scripts', 'p')
+vim.fn.writefile({ '#!/usr/bin/env lua', 'print(42)' }, lua_file)
+vim.cmd('new ' .. lua_file)
+require('rivet.header_ui').edit(root, {
+  language = 'python',
+  name = 'sample',
+  comment_header = { style = 'compact', author = 'Ada Lovelace' },
+}, vim.api.nvim_get_current_buf())
+local lua_text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
+assert(lua_text:match('^#!/usr/bin/env lua\n%-%-'), 'Lua header used host Python syntax')
+assert(lua_text:find('Ada Lovelace', 1, true) and lua_text:find('print(42)', 1, true))
+vim.cmd('bwipeout!')
 -- Review-time filesystem changes may not override modified native editor buffers.
 local settings = require('rivet.task_options').plan(root, { args = { '--sample' } })
 vim.cmd('new ' .. root .. '/.rivet.local.json')

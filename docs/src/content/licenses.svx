@@ -3,10 +3,10 @@ title: Project licenses
 description: Choose a license, preview its complete text, and include it in a new project.
 section: Guides
 order: 23
-updated: '2026-10-10'
+updated: '2026-10-13'
 ---
 
-Rivet offers the same license choices for C++, C, Python, Rust, and Swift. A source-file comment and a project license serve different purposes: selecting a project license writes the complete terms to `LICENSE`.
+Rivet offers the same license choices for C++, C, Python, Rust, Swift, and Lua. A source-file comment and a project license serve different purposes: selecting a project license writes the complete terms to `LICENSE`.
 
 ## Choose and preview
 

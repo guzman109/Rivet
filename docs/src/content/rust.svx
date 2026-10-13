@@ -3,7 +3,7 @@ title: Rust and Cargo
 description: Create applications, libraries, and workspaces while keeping Cargo in charge of builds and dependencies.
 section: Guides
 order: 20
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
 Choose Rust, then an application, library, or workspace. Editions 2024 and 2021 are offered, with 2024 first. The starter has a dependency-free library, a correctness test, and an application when requested.
@@ -22,7 +22,7 @@ nvim
 2. Choose Git and comment-header preferences. Select **Cargo workspace with an application and library**, then edition **2024**. Review and apply with `c`.
 3. Open `crates/compute_demo/src/main.rs`. Run `:RivetTask run` and select Debug; the application prints `42`.
 4. Run `:RivetTask test`. The library's correctness test should pass. Cargo may also report binary/doc-test suites containing zero tests.
-5. Run `:RivetFile`, enter `feature`, and add `mod feature;` to the appropriate `main.rs` or `lib.rs`. Save and run `:RivetTask check` to compile the change.
+5. Run `:RivetFile`, select **rust**, choose **Source file** after checking the header preview, enter `feature`, and add `mod feature;` to the appropriate `main.rs` or `lib.rs`. Save and run `:RivetTask check` to compile the change.
 
 To try error navigation, temporarily change the call to `add` in `main.rs` to `missing`, save, and run Check. Use `:copen` to jump to the compiler diagnostic, correct the name, then `:RivetTask repeat`.
 

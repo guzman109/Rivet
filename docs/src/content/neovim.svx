@@ -3,14 +3,14 @@ title: Neovim plugin
 description: Set up the editor interface and use previews, templates, and project tasks.
 section: Start here
 order: 2
-updated: '2026-10-12'
+updated: '2026-10-13'
 ---
 
 Rivet is a Neovim plugin for creating C/C++, Python, Rust, SwiftPM, and Lua projects, adding files from templates, and running native tasks. It requires Neovim 0.11 or newer and the Rivet plugin. Start with [installation and language selection](/docs/start-here/) if you have not loaded the plugin yet.
 
-Run `:RivetNew` after loading the plugin to create your first project. Follow the [C++](/docs/first-project/), [C](/docs/c/#first-run-in-neovim), [Python](/docs/python/#first-run-in-neovim), [Rust](/docs/rust/#first-run-in-neovim), or [SwiftPM](/docs/swift/#first-run-in-neovim) walkthrough for your language.
+Run `:RivetNew` after loading the plugin to create your first project. Follow the [C++](/docs/first-project/), [C](/docs/first-c-project/), [Python](/docs/first-python-project/), [Rust](/docs/first-rust-project/), [SwiftPM](/docs/first-swift-project/), or [Lua](/docs/first-lua-project/) walkthrough for your language.
 
-## Load the plugin
+## Use a local checkout
 
 Add the checkout to your runtime path and initialize it. Replace `/path/to/rivet.nvim` with your checkout's actual location:
 
@@ -32,6 +32,7 @@ With lazy.nvim, use the GitHub plugin specification:
   'guzman109/Rivet',
   name = 'rivet.nvim',
   main = 'rivet',
+  version = '0.1.x',
   opts = { default_preset = 'debug' },
 }
 ```
@@ -56,7 +57,7 @@ Run `:RivetNew`, choose a language, then choose **New folder** to enter a name a
 
 Choose **Initialize Git (reuse an existing repository)** to initialize a local repository after approving the file plan. Existing repositories, including enclosing repositories and worktrees, are reused. The review shows the Git action; initialization uses Git's configured default branch and does not stage files or create a commit.
 
-Every provider supplies a language-specific `.gitignore`: C/C++ build products, Python environments and caches, Cargo's `target/`, or SwiftPM's `.build/` and `.swiftpm/`. Existing ignore rules are kept after the generated rules so their exceptions take precedence. Other generated-file collisions are refused. To work on a project that already has native configuration, follow [Existing projects](/docs/existing-projects/).
+Every provider supplies a language-specific `.gitignore`: C/C++ build products, Python environments and caches, Cargo's `target/`, SwiftPM's `.build/` and `.swiftpm/`, or Lua caches and local LuaRocks files. Existing ignore rules are kept after the generated rules so their exceptions take precedence. Other generated-file collisions are refused. To work on a project that already has native configuration, follow [Existing projects](/docs/existing-projects/).
 
 For C++, choose C++17, C++20, C++23, or C++26 (the default), then a workload profile. **General** creates the core/application example; the [HPC](/docs/hpc/) and [graphics](/docs/graphics/) profiles add their own executables. C++17 uses headers; C++20 and newer offer named modules, with a separate choice of a single-file interface or split interface and implementation. `import std` is available from C++23 when the toolchain supports it.
 
@@ -112,14 +113,14 @@ Every command is also a subcommand of `:Rivet`, with Tab completion: `:Rivet fil
 | `:RivetDoctor` | Inspect the selected provider's tools; [coverage varies by provider](/docs/troubleshooting/#what-doctor-checks). |
 | `:RivetRunTarget` | Change the remembered application target. |
 | `:RivetMigrate` | Review converting an Outset project to Rivet. |
-| `:RivetTask build` | Native build; Python checks syntax, CMake configures first. |
+| `:RivetTask build` | Native build; Python and Lua check syntax, CMake configures first. |
 | `:RivetTask run` | Run the application through the provider's native workflow. |
 | `:RivetTask test` | Run the provider's test workflow. |
 | `:RivetTask repeat` | Repeat the previous task using current build choices. |
 
 For CMake, Build configures first and Test/Run configure and build first. Other providers sequence native tools; a failed or stopped step ends the workflow. Run prompts for an application when several exist. Recorded starter test executables are excluded; an existing CMake project's File API products can include test programs, so select the intended application. Preset, application, and last task are remembered per project across editor restarts in Neovim's local state directory.
 
-Output streams into a reused window: Ctrl-C stops the local task's process group, including compiler/application children, and `q` closes the output without stopping the task. [Runtime options](/docs/task-options/#slurm-examples) explains remote cancellation limits. C/C++, Swift, Cargo primary-span diagnostics, and Python traceback locations appear in quickfix; use `:copen`, Enter, `:cnext`, and `:cprevious` to navigate them. Save edited sources before building.
+Output streams into a reused window: Ctrl-C stops the local task's process group, including compiler/application children, and `q` closes the output without stopping the task. [Runtime options](/docs/task-options/#slurm-examples) explains remote cancellation limits. C/C++, Swift, Cargo primary-span diagnostics, Python traceback locations, and Lua source errors appear in quickfix; use `:copen`, Enter, `:cnext`, and `:cprevious` to navigate them. Save edited sources before building.
 
 ## Keep your language tools
 
@@ -129,7 +130,7 @@ For missing module diagnostics, follow [Troubleshooting](/docs/troubleshooting/)
 
 ## Language and workload guides
 
-Use [C interoperability](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/), or [SwiftPM](/docs/swift/) for provider tasks. C++ also offers [HPC](/docs/hpc/) and [graphics](/docs/graphics/) profiles. All providers keep the same review/cancel flow.
+Use [C interoperability](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), or [Lua](/docs/lua/) for provider tasks. C++ also offers [HPC](/docs/hpc/) and [graphics](/docs/graphics/) profiles. All providers keep the same review/cancel flow.
 
 ## Existing Outset setup
 

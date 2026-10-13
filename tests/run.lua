@@ -755,7 +755,7 @@ test('ordinary application JSON stays visible in native task output', function()
   local render = diagnostics.render
   eq(diagnostics.render_for({ 'python', '-m', 'sample' }), nil)
   eq(diagnostics.render_for({ './rust_binary' }), nil)
-  eq(diagnostics.render_for({ 'cargo', 'build', '--message-format=json' }), render)
+  assert(type(diagnostics.render_for({ 'cargo', 'build', '--message-format=json' })) == 'function')
   for _, line in ipairs({
     '{"reason":"completed","count":42}',
     '{"reason":"unknown"}',
@@ -773,6 +773,45 @@ test('ordinary application JSON stays visible in native task output', function()
     ),
     nil
   )
+end)
+
+test('Cargo JSON decoding ends at the build boundary and stays on its stdout', function()
+  local diagnostics = require('rivet.native_diagnostics')
+  local artifact = '{"reason":"compiler-artifact","target":{"name":"USER"}}'
+  local message = '{"reason":"compiler-message","message":{"message":"USER",'
+    .. '"spans":[{"is_primary":true,"file_name":"fake.rs","line_start":2,"column_start":1}]}}'
+  local finished = '{"reason":"build-finished","success":true}'
+  for _, argv in ipairs({
+    { 'cargo', 'run', '--message-format=json', '--' },
+    { '/bin/cargo', 'test', '--message-format', 'json' },
+    { 'env', '-u', 'OLD', 'MODE=debug', '/bin/cargo', 'run', '--message-format=json' },
+  }) do
+    local render, parse = diagnostics.render_for(argv), diagnostics.parse_for(argv)
+    eq(render(artifact, 'stderr'), artifact)
+    eq(parse(message, '/tmp', 'stderr'), nil)
+    eq(render(artifact, 'stdout'), 'Built USER')
+    eq(parse(message, '/tmp', 'stdout').lnum, 2)
+    -- A stderr lookalike must not terminate Cargo's stdout protocol.
+    eq(render(finished, 'stderr'), finished)
+    eq(parse(finished, '/tmp', 'stderr'), nil)
+    eq(render(artifact, 'stdout'), 'Built USER')
+    eq(render(finished, 'stdout'), 'Build finished')
+    eq(parse(finished, '/tmp', 'stdout'), nil)
+    eq(render(artifact, 'stdout'), artifact)
+    eq(render(message, 'stdout'), message)
+    eq(parse(message, '/tmp', 'stdout'), nil)
+    eq(parse('src/main.rs:3: error: runtime failure', '/tmp', 'stderr').lnum, 3)
+  end
+  for _, argv in ipairs({
+    { 'cargo', 'run', '--', '--message-format=json' },
+    { 'python', 'app.py', '--message-format=json' },
+    { 'echo', 'cargo', 'run', '--message-format=json' },
+    { 'env', 'MODE=debug', 'python', '--message-format=json' },
+    { 'cargo', 'build', '--message-format=jsonish' },
+  }) do
+    eq(diagnostics.render_for(argv), nil)
+    eq(diagnostics.parse_for(argv)(message, '/tmp', 'stdout'), nil)
+  end
 end)
 
 io.write(string.format('\n%d passed; %d failed (%s)\n', passed, failed, _VERSION))

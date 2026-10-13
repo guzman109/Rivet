@@ -3,7 +3,7 @@ title: Configuration
 description: Setup defaults, reusable project profiles, local identity, and remembered task choices.
 section: Reference
 order: 23
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
 Rivet installs commands without default key mappings. Configure the editor with `require('rivet').setup(options)`.
@@ -13,8 +13,8 @@ Rivet installs commands without default key mappings. Configure the editor with 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `projects_dir` | `nil` | Parent for new folders; unset uses Neovim's working directory. The destination remains editable. Current-folder creation always uses `:pwd`. |
-| `task_output` | `keep` (default) shows completed output; `close-on-success` closes successful final task output and retains it for `:RivetOutput`. |
-| `default_preset` | `'debug'` | Preferred choice before a project has a remembered selection. C/C++ uses available CMake configure presets; Python, Cargo, and SwiftPM offer `debug` and `release`. |
+| `task_output` | `'keep'` | Keep completed output visible. `'close-on-success'` closes successful final task output and retains it for `:RivetOutput`; failed or cancelled output stays visible. |
+| `default_preset` | `'debug'` | Preferred choice before a project has a remembered selection. C/C++ uses available CMake configure presets; Python, Cargo, SwiftPM, and Lua offer `debug` and `release`. |
 | `profiles` | `{}` | Named sets of creation choices. Configured profiles take precedence over saved local profiles with the same name. |
 | `identity` | `nil` | Optional file-header defaults. If omitted, the wizard can use an identity explicitly saved with `:RivetIdentity`; otherwise fields start blank. |
 
@@ -48,12 +48,12 @@ These saved creation profiles choose a starting point; every answer is still edi
 
 ## Save choices from a project
 
-Run `:RivetProfile` inside an Rivet project, give the profile a name, and approve its preview with `c`. All profiles save `language`; additional fields are:
+Run `:RivetProfile` inside a Rivet project, give the profile a name, and approve its preview with `c`. All profiles save `language`; additional fields are:
 
 | Provider | Saved creation choices |
 | --- | --- |
 | C++ | `standard`, `modules`, `std_modules`, `module_layout`, `kind`, `layout`, `style`, `header_guard`, `generator`, `profile`, and CUDA's `cuda_standard`, `cuda_architectures` when present |
-| C | `kind`, `standard` |
+| C | `kind`, `standard`, `header_guard` |
 | Python | `kind`, `manager` |
 | Rust | `kind`, `edition` |
 | Swift | `kind` |

@@ -3,7 +3,7 @@ title: Runtime options and hooks
 description: Separate build settings from runtime arguments, environments, parallel resources, and explicit external tasks.
 section: Reference
 order: 25
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
 `:RivetRunOptions` edits a JSON object and previews the resulting `.rivet.local.json` before saving. New projects ignore this machine-local file. In an existing project, add it to your ignore rules when appropriate. Keep secrets in the process environment rather than writing them into command previews or shared files.
@@ -35,6 +35,7 @@ Arguments are individual strings, not a shell command. Spaces, dollar signs, and
 | `submit`, `status`, `cancel` | Explicit cluster command arrays, without implicit build or polling |
 | `job_id` | User-supplied scheduler ID for status/cancel hooks |
 | `python`, `python_module`, `test_runner` | Python interpreter, module, and `unittest`/`pytest` selection |
+| `lua` | Local executable override matching the recorded Lua, LuaJIT, or Neovim runtime |
 
 Native tooling can require additional optional components. An unavailable task reports its requirement instead of installing software. Repeat reuses the last task and current remembered choices.
 

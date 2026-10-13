@@ -103,7 +103,7 @@ rivet run --target automation_lua
 
 Existing application entry points remain intact. The example requires Lua development headers and libraries that CMake can find; creation downloads nothing. CMake's [FindLua module](https://cmake.org/cmake/help/latest/module/FindLua.html) supplies the include and link settings.
 
-The default script path points to this source checkout and works from any working directory. Pass another script as the executable's first argument when deploying. Edit the host and its CMake include together when changing source paths. The example has separate target ownership, so generic source-list mutations do not rewrite its build definition. An external CMake project remains external; configure it before selecting the new executable in the target picker.
+The default script path points to this source checkout and works from any working directory. The host also prepends the checkout's `lua/?.lua` and `lua/?/init.lua` paths, so `require` can load modules created there. Those modules remain runtime files in the checkout. Pass another script as the executable's first argument when deploying, and adapt the module paths when moving the application. Edit the host and its CMake include together when changing source paths. The example has separate target ownership, so generic source-list mutations do not rewrite its build definition. An external CMake project remains external; configure it before selecting the new executable in the target picker.
 
 ## Embed Lua in Rust
 
@@ -127,6 +127,6 @@ For a generated workspace, the example belongs to its generated member:
 cargo run --manifest-path crates/my_project/Cargo.toml --example automation
 ```
 
-For a virtual external workspace, open the desired package directly or supply its project-relative package directory with `--target crates/my_package` when creating the example. The example uses `include_str!` to embed the script at compile time; rebuild after changing it.
+For a virtual external workspace, open the desired package directly or supply its project-relative package directory with `--target crates/my_package` when creating the example. The example uses `include_str!` to embed the entry script at compile time; rebuild after changing it. Modules loaded through `require` still come from the checkout's `lua/` directory at runtime. Copying the executable alone does not bundle those modules; adapt the host's module paths for deployment.
 
 Creation performs no download. A subsequent Cargo build may fetch the pinned binding and dependencies, and `vendored` builds the selected Lua runtime from source. The [mlua feature documentation](https://github.com/mlua-rs/mlua#feature-flags) describes the Lua version and vendoring choices. If a manifest already mentions mlua, Rivet refuses to guess how its version, aliases, or Lua features should be merged; adapt that existing configuration manually.

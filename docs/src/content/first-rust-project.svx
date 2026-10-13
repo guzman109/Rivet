@@ -1,0 +1,163 @@
+---
+title: Your first Rust project
+description: Create a Cargo application, add a library module, and build, run, test, and document it.
+section: Start here
+order: 7
+updated: '2026-10-13'
+---
+
+This walkthrough creates `compute_demo`: a Cargo package with an executable, a reusable library, and one correctness test. You will add a module, call it from the executable, and follow a compiler error back to its source.
+
+## Check the tools
+
+[Install and load Rivet](/docs/start-here/#install-in-neovim) in Neovim 0.11 or newer. Put `cargo` and `rustc` on the editor's `PATH`. This walkthrough selects edition 2024, which requires [Rust 1.85 or newer](https://doc.rust-lang.org/edition-guide/rust-2024/index.html). Edition 2021 is also available in the wizard.
+
+Check your toolchain in a terminal:
+
+```sh
+cargo --version
+rustc --version
+```
+
+After creating the project, `:RivetDoctor` reports its Cargo tools. Format and Lint additionally use rustfmt and Clippy; install those toolchain components explicitly when you want them. Project creation does not install tools or add crate dependencies.
+
+## Create the project in Neovim
+
+Start in a parent directory of your choice:
+
+```sh
+mkdir compute_demo
+cd compute_demo
+nvim
+```
+
+Run `:pwd` to confirm the destination, then `:RivetNew`. Select **New choices** first if a saved-profile menu appears.
+
+| Prompt | Choice for this walkthrough |
+| --- | --- |
+| Project language | `rust` |
+| Create project in | Current folder |
+| Project name | `compute_demo` |
+| Git repository | Skip Git initialization |
+| Project license | No license yet |
+| File comment headers | No header |
+| Project kind | Application |
+| Rust edition | 2024 |
+
+You can choose Git initialization, a license, or personalized comment headers instead; those choices appear in the final review. Inspect the file tree and file previews, then press `c` or Ctrl-S to create the project. Press `q` to cancel the review. Creation writes directly into `compute_demo`.
+
+The main files are:
+
+```text
+compute_demo/
+  Cargo.toml
+  .rivet.json
+  .gitignore
+  .editorconfig
+  README.md
+  AGENTS.md
+  src/
+    lib.rs
+    main.rs
+```
+
+`Cargo.toml` describes the native package. `src/lib.rs` exports `add` and contains the test; `src/main.rs` calls that library. `.rivet.json` records Rivet's project choices and file registrations. Cargo creates `Cargo.lock` and `target/` when its commands run.
+
+## Build, run, and test
+
+Open the executable and build it:
+
+```vim
+:edit src/main.rs
+:RivetTask build
+```
+
+Select **Debug / development** when prompted for the build choice. A successful task finishes with `Exit status: 0`.
+
+Run `:RivetTask run`. Cargo builds and launches `compute_demo`, which prints:
+
+```text
+42
+```
+
+Run `:RivetTask test`. The library test `tests::adds_values` checks both `add(20, 22) == 42` and `add(-1, 1) == 0`. Expect one passing library test; Cargo may also report binary and documentation suites with zero tests.
+
+Use `q` to close task output. `:RivetPreset` switches between Debug and Release, and `:RivetTask repeat` repeats the previous task. `:RivetRunTarget` selects a binary when you add more than one.
+
+## Add a module and use it
+
+Run `:RivetFile`, choose **rust** in the file-language picker, then **Source file** in the **New source file** preview. Check its header sample, or the message that no header is configured, then enter `number` for the name. The review should create `src/number.rs`. Approve with `c`, then open the file:
+
+```vim
+:edit src/number.rs
+```
+
+Keep any optional file header and replace the template below it with:
+
+```rust
+/// Returns the example answer.
+pub fn answer() -> i32 {
+    42
+}
+```
+
+Open `src/lib.rs` and add this declaration above its existing code:
+
+```rust
+pub mod number;
+```
+
+Cargo compiles a module after its parent declares it. Rivet creates and records the file; you choose its module declaration and visibility.
+
+Replace the executable code in `src/main.rs` with:
+
+```rust
+fn main() {
+    println!("Answer: {}", compute_demo::number::answer());
+}
+```
+
+Save with `:wall`, then run `:RivetTask check`, `:RivetTask run`, and `:RivetTask test`. Check compiles the workspace without producing the executable; Run builds it and prints `Answer: 42`. The original library test still passes.
+
+For an explicit project-relative path, use a name such as `src/number.rs`. A bare name such as `number` uses the conventional source directory. Nested Rust modules also need the appropriate parent declarations.
+
+## Follow a compiler error
+
+Temporarily change `number::answer()` in `src/main.rs` to `number::answr()`, save, and run `:RivetTask check`. Cargo should report that the function cannot be found.
+
+Run `:copen` and press Enter on the compiler diagnostic to jump to its file and location. `:cnext` and `:cprevious` move between entries. Correct the spelling, save, and run `:RivetTask repeat`; Check should succeed. Rivet uses Cargo's compiler messages and primary source spans for quickfix entries.
+
+## Use the CLI instead
+
+With the optional [CLI installed](/docs/getting-started/), start in the parent directory and use these commands for the same starter:
+
+```sh
+rivet new compute_demo --language rust --kind app --edition 2024 --preview
+rivet new compute_demo --language rust --kind app --edition 2024
+rivet build --root compute_demo
+rivet run --root compute_demo
+rivet test --root compute_demo
+```
+
+The first command previews the files; the second creates them. Run prints `42`. To add the module through the CLI:
+
+```sh
+rivet file number --language rust --root compute_demo --preview
+rivet file number --language rust --root compute_demo
+```
+
+Make the `number.rs`, `lib.rs`, and `main.rs` edits shown above, then repeat Run and Test. File creation preserves `Cargo.toml`; declare modules and change dependencies through Rust source and Cargo's native tools.
+
+## Document the library
+
+The `///` comment on `answer` is a Rust documentation comment. From the project root, generate the package's API documentation with:
+
+```sh
+cargo doc --no-deps
+```
+
+Open `target/doc/compute_demo/index.html` to browse the library and its `number` module. [Cargo's documentation command](https://doc.rust-lang.org/cargo/commands/cargo-doc.html) also offers `--open` to launch the result in your browser.
+
+Rust is outside [Doxygen's built-in language list](https://www.doxygen.nl/manual/starting.html#step0). Use rustdoc for the Rust API. A shared Doxygen documentation site requires an externally supplied adapter or input filter; Rivet does not supply one. The [Doxygen guide](/docs/doxygen/) explains that integration boundary.
+
+Continue with [Rust and Cargo](/docs/rust/) for workspace members, additional binaries, and native dependencies, or [Files and targets](/docs/templates/) for file creation in mixed projects.

@@ -3,7 +3,7 @@ title: Your first C++ project
 description: Create a project in Neovim, personalize its headers, add a module, and build, run, and test it.
 section: Start here
 order: 3
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
 This C++26 walkthrough creates an application named `engine`, adds a small single-file module, and uses a compiler error to try the quickfix workflow. The result is an ordinary CMake project you can keep editing afterward. For another language, start with [installation and language selection](/docs/start-here/#choose-your-first-project).
@@ -30,6 +30,7 @@ Run `:pwd` to confirm the destination, then `:RivetNew` and use these choices. I
 | Create project in | Current folder |
 | Project name | `engine` (inferred from the folder, editable) |
 | Git repository | Initialize Git (reuse an existing repository), or Skip Git initialization |
+| Project license | No license yet, or your chosen license with its requested holder/year |
 | File comment headers | Personalize and preview styles, or No header |
 | C++ standard | C++26 |
 | Workload profile | General C++ |
@@ -73,7 +74,7 @@ Use `q` to close task output. Rivet remembers Debug for this project across edit
 
 ## Add a single-file module
 
-Run `:RivetFile`, choose **Module interface**, select the `engine_core` target, use the name `number`, and name the module `engine.number`. The review should add `src/core/number.cppm` and register it in the core target's `CXX_MODULES` file set. Approve with `c`.
+Run `:RivetFile`, select **C++** in the language picker, choose **Module interface**, select the `engine_core` target, use the name `number`, and name the module `engine.number`. The review should add `src/core/number.cppm` and register it in the core target's `CXX_MODULES` file set. Approve with `c`.
 
 Open that file. Keep its optional comment header and replace the template below it with:
 
@@ -120,3 +121,9 @@ Correct the typo, save, and run `:RivetTask repeat`. The build should succeed. R
 Use `:RivetHeader` to preview an edit to the current file's comment header, or `:RivetHeaderDefaults` to change the defaults for future files. `:RivetCMake` opens the selected build's cache options; [CMake and tasks](/docs/cmake/) explains the controls.
 
 For another component, use [Files and targets](/docs/templates/). Keep custom CMake logic in `CMakeLists.txt`; generated target and dependency fragments are maintained through Rivet's reviewed operations.
+
+## Document the API with Doxygen
+
+Choose **Doxygen documentation** while personalizing headers, or run `:RivetHeaderDefaults` before adding more files. The template picker shows a sample header; the final review shows the real filename and complete generated contents.
+
+Add `@brief`, `@param`, and `@return` comments to exported declarations in `core.cppm`. Generate HTML for readers and XML for a documentation application using the [Doxygen guide](/docs/doxygen/). This lets the API reference grow with your first project and carry the same Git/release identity.

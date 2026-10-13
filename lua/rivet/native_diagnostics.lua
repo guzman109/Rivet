@@ -1,4 +1,17 @@
 local M = {}
+local function parse_text(line, cwd)
+  local path, row = line:match('^%s*File "(.-)", line (%d+)')
+  if path and path:sub(1, 1) ~= '<' then
+    return {
+      filename = path:sub(1, 1) == '/' and path or cwd .. '/' .. path,
+      lnum = tonumber(row),
+      col = 1,
+      text = 'Python traceback / syntax error',
+      type = 'E',
+    }
+  end
+  return require('rivet.diagnostics').parse(line, cwd)
+end
 function M.parse(line, cwd)
   if line:sub(1, 1) == '{' then
     local ok, item = pcall(require('rivet.json').decode, line)
@@ -31,17 +44,7 @@ function M.parse(line, cwd)
       end
     end
   end
-  local path, row = line:match('^%s*File "(.-)", line (%d+)')
-  if path and path:sub(1, 1) ~= '<' then
-    return {
-      filename = path:sub(1, 1) == '/' and path or cwd .. '/' .. path,
-      lnum = tonumber(row),
-      col = 1,
-      text = 'Python traceback / syntax error',
-      type = 'E',
-    }
-  end
-  return require('rivet.diagnostics').parse(line, cwd)
+  return parse_text(line, cwd)
 end
 function M.render(line)
   if line:sub(1, 1) == '{' then
@@ -67,13 +70,90 @@ function M.render(line)
   end
   return line
 end
-function M.render_for(argv)
-  for _, arg in ipairs(argv or {}) do
-    if arg:match('^%-%-message%-format=json') then
-      return M.render
+local function cargo_json(argv)
+  argv = argv or {}
+  local index = 1
+  -- Task environment overrides wrap the executable in env. Do not search
+  -- arbitrary launcher/application arguments for an executable named cargo.
+  if (argv[index] or ''):match('[^/]+$') == 'env' then
+    index = index + 1
+    while argv[index] do
+      local arg = argv[index]
+      if arg == '-u' or arg == '--unset' then
+        index = index + 2
+      elseif arg == '-i' or arg == '--ignore-environment' or arg:match('^[%w_]+=') then
+        index = index + 1
+      elseif arg == '--' then
+        index = index + 1
+        break
+      else
+        break
+      end
     end
   end
-  -- Application output, Python tools, and Swift tools are plain text even
-  -- when a line happens to look like a Cargo protocol message.
+  if (argv[index] or ''):match('[^/]+$') ~= 'cargo' then
+    return false
+  end
+  for i = index + 1, #argv do
+    local arg = argv[i]
+    if arg == '--' then
+      break
+    end
+    local format = arg:match('^%-%-message%-format=(.*)$')
+      or (arg == '--message-format' and argv[i + 1])
+    for value in (format or ''):gmatch('[^,]+') do
+      if
+        value == 'json'
+        or value == 'json-diagnostic-short'
+        or value == 'json-diagnostic-rendered-ansi'
+        or value == 'json-render-diagnostics'
+      then
+        return true
+      end
+    end
+  end
+  return false
+end
+local function cargo_reader(argv)
+  if not cargo_json(argv) then
+    return
+  end
+  local finished = false
+  return function(line, stream)
+    if finished or stream and stream ~= 'stdout' then
+      return false
+    end
+    if line:sub(1, 1) == '{' then
+      local ok, item = pcall(require('rivet.json').decode, line)
+      if
+        ok
+        and type(item) == 'table'
+        and item.reason == 'build-finished'
+        and type(item.success) == 'boolean'
+      then
+        -- Cargo promises no further build JSON after this message. Run/test
+        -- can continue emitting arbitrary application output on the same pipe.
+        finished = true
+      end
+    end
+    return true
+  end
+end
+function M.render_for(argv)
+  local reading = cargo_reader(argv)
+  if reading then
+    return function(line, stream)
+      return reading(line, stream) and M.render(line) or line
+    end
+  end
+end
+function M.parse_for(argv)
+  local reading = cargo_reader(argv)
+  return function(line, cwd, stream)
+    if reading and reading(line, stream) then
+      return M.parse(line, cwd)
+    end
+    return parse_text(line, cwd)
+  end
 end
 return M

@@ -53,7 +53,11 @@ function M.questions(kind, spec, context)
     provider.questions,
     'This provider has no ' .. kind .. ' questionnaire; use its explicit options'
   )
-  return provider.questions(kind, spec, context or {})
+  local steps = provider.questions(kind, spec, context or {})
+  if kind == 'file' then
+    return require('rivet.file_templates').with_header_previews(steps, spec, spec.language or 'cpp')
+  end
+  return steps
 end
 
 function M.profile(spec)

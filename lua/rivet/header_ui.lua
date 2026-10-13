@@ -47,6 +47,18 @@ function M.configure(defaults, context, callback, opts)
     for _, style in ipairs(headers.styles) do
       if style.id ~= 'spdx' or (values.license and values.license:match('%S')) then
         local choice = vim.deepcopy(style)
+        if
+          style.id == 'doc'
+          and (
+            context.language == 'cpp'
+            or context.language == 'c'
+            or not context.language and context.filename and context.filename:match('%.cp?p?$')
+          )
+        then
+          choice.label = 'Doxygen documentation'
+          choice.description =
+            'Use @file and @brief metadata for generated API documentation. See the Doxygen guide for HTML and XML output.'
+        end
         local config = vim.tbl_extend('force', values, { style = style.id })
         choice.preview = headers.render(config, context)
           .. (context.body or (headers.example or {}).body or '')
@@ -76,9 +88,10 @@ function M.configure(defaults, context, callback, opts)
 end
 
 function M.edit(root, spec, buf)
-  local headers = require('rivet.tasks').service(spec, 'headers')
   assert(vim.bo[buf].buftype == '' and vim.bo[buf].modifiable, 'Open an editable source file first')
   local path = vim.api.nvim_buf_get_name(buf)
+  local language = require('rivet.file_templates').infer(path) or spec.language or 'cpp'
+  local headers = require('rivet.tasks').service({ language = language }, 'headers')
   assert(
     path ~= '' and headers.accepts(path, vim.bo[buf].filetype),
     'This file is not supported by the provider comment-header editor'
@@ -98,7 +111,7 @@ function M.edit(root, spec, buf)
     local body = editable:sub(replace_leading and leading + 1 or 1)
     M.configure(
       defaults,
-      { filename = path, project = spec.name, language = spec.language, body = body },
+      { filename = path, project = spec.name, language = language, body = body },
       function(config)
         local after = prefix
           .. headers.render(config, { filename = path, project = spec.name })

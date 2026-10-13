@@ -32,6 +32,14 @@ int main(int argc, char **argv) {
     return 1;
   }
   luaL_openlibs(state);
+  lua_getglobal(state, "package");
+  lua_getfield(state, -1, "path");
+  const char *previous_path = lua_tostring(state, -1);
+  lua_pushfstring(state, "%s/lua/?.lua;%s/lua/?/init.lua;%s",
+                  RIVET_LUA_ROOT, RIVET_LUA_ROOT,
+                  previous_path != NULL ? previous_path : "");
+  lua_setfield(state, -3, "path");
+  lua_pop(state, 2);
   lua_register(state, "host_add", host_add);
   const char *path = argc > 1 ? argv[1] : RIVET_LUA_SCRIPT;
   if (luaL_dofile(state, path) != 0) {
@@ -144,6 +152,12 @@ function M.plan(root, options)
     for _, existing in ipairs(spec.files or {}) do
       assert(existing:lower() ~= path:lower(), 'File is already registered: ' .. path)
     end
+    local headers = path:match('%.lua$') and require('rivet.lua_headers')
+      or require('rivet.headers')
+    if headers.accepts(path) then
+      content = headers.render(spec.comment_header, { filename = path, project = spec.name })
+        .. content
+    end
     files[path], expected[path] = content, false
   end
   local function replace(path, before, after)
@@ -162,13 +176,21 @@ function M.plan(root, options)
     -- examples/foo.rs is one directory below its package; workspace packages
     -- add one ../ for each component of the package directory.
     local relative = '../'
+    local root_relative = ''
     for _ in prefix:gmatch('[^/]+') do
       relative = relative .. '../'
+      root_relative = root_relative .. '../'
     end
     create(
       source,
       'fn main() -> mlua::Result<()> {\n'
         .. '    let lua = mlua::Lua::new();\n'
+        .. '    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/'
+        .. root_relative
+        .. '");\n'
+        .. '    let package: mlua::Table = lua.globals().get("package")?;\n'
+        .. '    let previous_path: String = package.get("path")?;\n'
+        .. '    package.set("path", format!("{}lua/?.lua;{}lua/?/init.lua;{}", root, root, previous_path))?;\n'
         .. '    let host_add = lua.create_function(|_, (a, b): (f64, f64)| Ok(a + b))?;\n'
         .. '    lua.globals().set("host_add", host_add)?;\n'
         .. '    lua.load(include_str!("'
@@ -193,6 +215,8 @@ function M.plan(root, options)
       'Adds the pinned mlua 0.12.2 dependency with Lua 5.4 and vendored features. Creation downloads nothing; the next Cargo build may fetch crates and builds the bundled Lua runtime.'
     notes[#notes + 1] =
       'The example embeds the Lua script with include_str!, independent of the working directory. Rebuild after changing the script.'
+    notes[#notes + 1] =
+      'Required Lua modules are loaded from this checkout’s lua/ directory at runtime; include those files when deploying or change the module search path explicitly.'
   else
     for _, existing in ipairs(spec.targets or {}) do
       assert(existing.name:lower() ~= target:lower(), 'Target already exists: ' .. target)
@@ -228,6 +252,7 @@ function M.plan(root, options)
         .. 'target_compile_definitions('
         .. target
         .. ' PRIVATE\n'
+        .. '  "RIVET_LUA_ROOT=\\"${CMAKE_CURRENT_LIST_DIR}/..\\""\n'
         .. '  "RIVET_LUA_SCRIPT=\\"${CMAKE_CURRENT_LIST_DIR}/../'
         .. script_path
         .. '\\"")\n'
@@ -271,6 +296,8 @@ function M.plan(root, options)
       'Requires installed Lua development headers and libraries discoverable by CMake FindLua. Creation downloads nothing.'
     notes[#notes + 1] =
       'The default script path points into this source checkout, independent of the working directory. Pass another script path as the executable’s first argument when deploying.'
+    notes[#notes + 1] =
+      'Required Lua modules are loaded from this checkout’s lua/ directory at runtime; include those files when deploying or change the module search path explicitly.'
     notes[#notes + 1] =
       'The host and CMake extension remain editable. Change their source paths together when moving the example.'
   end

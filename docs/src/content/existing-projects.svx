@@ -3,10 +3,10 @@ title: Existing projects and file changes
 description: Discover native projects, run their tools, and review changes to Rivet-owned source lists.
 section: Guides
 order: 16
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
-Open a file inside a CMake, Python, Cargo, or SwiftPM project and run `:RivetTask`. Rivet recognizes `CMakeLists.txt`, `pyproject.toml`, `Cargo.toml`, and `Package.swift`. For CMake it searches past nested source-list fragments for a project declaration or presets; an independently declared nested project can be selected as its own root. `--root PATH` explicitly chooses a CLI root. Discovery writes no manifest and does not claim ownership of existing source lists.
+Open a file inside a CMake, Python, Cargo, SwiftPM, or configured Lua project and run `:RivetTask`. Rivet recognizes `CMakeLists.txt`, `pyproject.toml`, `Cargo.toml`, `Package.swift`, and Lua configuration markers `.luarc.json`, `.luacheckrc`, or `.stylua.toml`. For CMake it searches past nested source-list fragments for a project declaration or presets; an independently declared nested project can be selected as its own root. `--root PATH` explicitly chooses a CLI root. Discovery writes no manifest and does not claim ownership of existing source lists.
 
 ## Work in an existing CMake project
 
@@ -26,6 +26,16 @@ rivet run --root . --target viewer
 CMake scripts execute during configuration as they normally do. Rivet writes its File API query in the selected build directory and a compilation-database copy in `.cache/rivet`. It preserves custom `.clangd` files; point `CompilationDatabase` at `.cache/rivet` to follow the selected build. See [CMake and tasks](/docs/cmake/).
 
 A multi-config project needs a build preset with a configuration. Build directories and executable artifacts must be inside the project; symlink paths and in-source builds are rejected. Create native presets before using the cache override editor on a project without presets.
+
+## Create files without adopting a build
+
+`:RivetFile` can create source files in an existing project or an ordinary folder. Select the language and review the paths; the operation preserves the native build configuration and creates no Rivet manifest. Register or import those files through the project's native workflow. In an ordinary folder, the CLI needs an explicit root:
+
+```sh
+rivet file scripts/prepare.lua --language lua --kind script --root . --preview
+```
+
+External Lua tasks discover `.lua` files beneath the selected root for syntax checks. Run is available for `main.lua`, and Test expects `tests/test.lua`. These external projects default to the `lua` runtime; an executable override in `.rivet.local.json` must be compatible with ordinary Lua invocation. Use a Rivet-owned Lua project when you need the recorded Neovim runtime and plugin test workflow. See [Lua projects](/docs/lua/).
 
 ## Review a move or removal
 
@@ -53,6 +63,6 @@ The conservative token scan skips comments and string literals. It handles direc
 
 ## Ownership stays explicit
 
-File-list mutations require an Rivet manifest. They do not adopt arbitrary existing CMake source lists. Python, Cargo, and SwiftPM tasks preserve native manifests and lockfiles; use their native tools for dependency changes. See the [Python](/docs/python/), [Rust](/docs/rust/), and [SwiftPM](/docs/swift/) guides.
+Registered file-list mutations require a Rivet manifest. They do not adopt arbitrary existing CMake source lists. C/C++ source operations and recorded foreign-language moves/removals preserve that ownership boundary. Python, Cargo, and SwiftPM tasks preserve native manifests and lockfiles; use their native tools for dependency changes. See the [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), and [Lua](/docs/lua/) guides.
 
 Automatic source-list adoption is a separate future migration workflow. Existing-project build support does not imply that migration has happened.

@@ -3,10 +3,10 @@ title: Language providers
 description: Extend the pure Lua project model while preserving shared preview and write boundaries.
 section: Reference
 order: 22
-updated: '2026-10-09'
+updated: '2026-10-13'
 ---
 
-A language provider is a Lua module containing schema validation, templates, and build-file mutations. The shared project service handles manifests, previews, conflict detection, and filesystem writes. Bundled providers cover C++, C, Python, Rust, and SwiftPM. They share the wizard, previews, file transactions, Git setup, and task UI.
+A language provider is a Lua module containing schema validation, templates, and build-file mutations. The shared project service handles manifests, previews, conflict detection, and filesystem writes. Bundled providers cover C++, C, Python, Rust, SwiftPM, and Lua. They share the wizard, previews, file transactions, Git setup, and task UI.
 
 ## Register a provider explicitly
 
@@ -26,11 +26,11 @@ Register before using that language in the same Lua process. Passing an unregist
 
 ## Bundled languages and workloads
 
-[C++](/docs/modules/) remains the primary HPC/graphics path. [C](/docs/c/) covers standalone projects and mixed C/C++ ABI work. [Python](/docs/python/), [Rust](/docs/rust/), and [SwiftPM](/docs/swift/) use their native tools for build/run/test and dependencies.
+[C++](/docs/modules/) remains the primary HPC/graphics path. [C](/docs/c/) covers standalone projects and mixed C/C++ ABI work. [Python](/docs/python/), [Rust](/docs/rust/), and [SwiftPM](/docs/swift/) use their native tools for build/run/test and dependencies. [Lua](/docs/lua/) provides scripts, reusable modules, and Neovim plugins.
 
 C++ workload profiles cover [CPU/OpenMP/MPI/CUDA](/docs/hpc/) and [Metal/WebGPU/Vulkan/OpenGL](/docs/graphics/). Hardware and SDK test status is recorded in [Compatibility](/docs/compatibility/).
 
-Future expansion can consider browser WebGPU, reviewed source-list adoption, deeper cluster integration, and Xcode application workflows. General JavaScript/TypeScript, Go, and Lua templates are not currently bundled.
+Future expansion can consider browser WebGPU, reviewed source-list adoption, deeper cluster integration, and Xcode application workflows. General JavaScript/TypeScript and Go providers are not currently bundled.
 
 ## Shared provider capabilities
 
@@ -43,7 +43,7 @@ The registry now routes questionnaires and runtime services through the selected
 | `questions(kind, spec, context)` | Pure step descriptors for `new`, `file`, `target`, or `dependency`. Steps have a key/title, input/default or preview items, and optional validation/visibility hooks. |
 | `profile_fields` | Creation fields that may be saved in a reusable local profile. Identity and machine paths should be excluded. |
 | `ignore_rules(spec)` | Initial `.gitignore` text. Existing rules remain last so their exceptions keep priority. |
-| `formatter(spec, filename, tools)` | Optional formatter argv; the project service executes it while preparing the review. |
+| `formatter(spec, filename, tools, context)` | Optional formatter argv; the project service executes it while preparing the review. For creation/mutation, the optional context supplies `root` and `existing`; upgrade calls may omit it. |
 | `local_files(spec, context)` | Additional machine-local files; the shared service resolves an explicitly supplied compiler first. |
 | `services.tasks` | Explicitly registered runtime module/table for preset listing and task plans. |
 | `services.doctor` | Read-only `inspect(root, preset, options)` returning diagnostic levels and messages. |
@@ -85,7 +85,7 @@ return {
 }
 ```
 
-The snippet describes the data contract, not a complete language implementation. Keep provider functions pure: do not mutate the caller's specification, read or write files, execute processes, or depend on `vim`. Return file text with its final newline and keep every path relative to the project root. Unsupported operations should raise an actionable error.
+The snippet describes the data contract, not a complete language implementation. Keep these five model functions pure: do not mutate the caller's specification, read or write files, execute processes, or depend on `vim`. Return file text with its final newline and keep every path relative to the project root. Runtime services handle native discovery and task execution separately. Unsupported operations should raise an actionable error.
 
 The project service writes `.rivet.json`; the provider's file map should not create it itself.
 
@@ -99,7 +99,7 @@ Ordinary source files are created without overwriting existing files. The shared
 
 Start with one Lua module such as `my_rivet/languages/rust.lua`. When templates become large, put supporting Lua modules or template resources beside it. A TOML file can describe values, but the current provider contract is Lua because validation and build-file mutations need behavior.
 
-A full integration also needs task routing and editor questions. C/C++ use the CMake service; Python, Cargo, and SwiftPM use the native task service. Unsupported operations should explain the native alternative.
+A full integration also needs task routing and editor questions. C/C++ use the CMake service; Python, Cargo, and SwiftPM use the native task service; Lua has a runtime-specific task service. Unsupported operations should explain the native alternative.
 
 ## Work with an assistant
 
