@@ -1,5 +1,6 @@
 #!/bin/sh
-# Compatibility launcher. Prefer bin/rivet for new scripts.
+# Compatibility launcher, removed in Rivet 0.3.0. Prefer bin/rivet.
+printf '%s\n' 'outset is deprecated and will be removed in Rivet 0.3.0; run rivet instead.' >&2
 RIVET_LUA=${RIVET_LUA:-${OUTSET_LUA:-lua}}
 export RIVET_LUA
 exec "$(dirname "$0")/rivet" "$@"

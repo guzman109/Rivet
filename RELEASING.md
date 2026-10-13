@@ -18,6 +18,15 @@ The plugin requires Neovim 0.11+. The optional CLI is `bin/rivet`, a relocatable
 
 The archive builder uses tracked files, including staged files; it is a packaging tool, not a substitute for committing and reviewing a release. It excludes local dependency caches because those paths are not tracked.
 
+## Compatibility schedule
+
+The Outset rename shims are deprecated and print a notice when used. Remove them in **0.3.0**:
+
+- `bin/outset` and its `OUTSET_LUA` fallback
+- `lua/outset.lua` (`require('outset')`)
+
+`rivet migrate` / `:RivetMigrate` and reading `.outset.json` for migration stay until no supported release can produce an Outset project; they convert projects rather than keeping old names working. When removing a shim, delete its test in `tests/migration.lua` and the matching notes in `docs/src/content/cli.svx` and `neovim.svx`.
+
 ## Website deployment
 
 The site remains SvelteKit, TypeScript, and mdsvex with the static adapter. Bun provides local development and builds. Wrangler serves and deploys the prerendered files as Cloudflare Worker static assets. The configuration uses Worker name `rivet-docs`; it has no account ID, token, or custom domain committed.

@@ -93,4 +93,8 @@ assert(rt.run({ 'ln', '-s', rt.join(rt.absolute(root), 'bin/rivet'), link }).cod
 local result = rt.run({ link, '--version' }, { cwd = temp })
 assert(result.code == 0 and result.stdout:find('Rivet.nvim', 1, true), result.stderr)
 count = count + 1
+result = rt.run({ rt.join(rt.absolute(root), 'bin/outset'), '--version' }, { cwd = temp })
+assert(result.code == 0 and result.stdout:find('Rivet.nvim', 1, true), result.stderr)
+assert(result.stderr:find('outset is deprecated', 1, true), 'Missing outset deprecation notice')
+count = count + 1
 print(count .. ' migration/launcher checks passed; fixtures: ' .. temp)

@@ -126,4 +126,4 @@ Use [C interoperability](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/)
 
 ## Existing Outset setup
 
-Use `require('rivet').setup(...)` and `:Rivet…` commands in new configuration. The old `require('outset')` entry point still loads Rivet. Open a project with `.outset.json` and run `:RivetMigrate` to review its conversion and backups before applying. Reconfigure afterward.
+Use `require('rivet').setup(...)` and `:Rivet…` commands in new configuration. The old `require('outset')` entry point still loads Rivet, reports a deprecation through `:checkhealth vim.deprecated`, and will be removed in 0.3.0. Open a project with `.outset.json` and run `:RivetMigrate` to review its conversion and backups before applying. Reconfigure afterward.

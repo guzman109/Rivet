@@ -148,4 +148,4 @@ Cache editing, styles, and layouts concern the CMake/C++ workflow. Doctor does n
 
 Use `rivet migrate --root /path/to/project --preview` to review an Outset project's conversion, then repeat without `--preview` to apply it. Changed originals are backed up in `.rivet-recovery/`. The equivalent editor command is `:RivetMigrate`. Application names and module names stay the same; configure again to refresh the build and compilation database.
 
-The `outset` launcher still delegates to Rivet for old shell scripts. Projects with an `.outset.json` manifest need migration before Rivet tasks and mutations run.
+The `outset` launcher still delegates to Rivet for old shell scripts, prints a deprecation notice on stderr, and will be removed in 0.3.0; `OUTSET_LUA` is honored only through that launcher. Projects with an `.outset.json` manifest need migration before Rivet tasks and mutations run.
