@@ -108,11 +108,7 @@ function M.edit(root, spec, buf)
           {
             {
               label = 'Changes',
-              preview = (vim.text.diff or vim.diff)(
-                before,
-                after,
-                { result_type = 'unified', ctxlen = 3 }
-              ),
+              preview = ui.diff(before, after, { result_type = 'unified', ctxlen = 3 }),
             },
             { label = 'Complete file', preview = after },
           },

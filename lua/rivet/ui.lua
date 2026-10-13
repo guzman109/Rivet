@@ -1,4 +1,7 @@
 local M = {}
+-- vim.text.diff is Neovim 0.12+; vim.diff remains for 0.11.
+---@diagnostic disable-next-line: deprecated
+M.diff = vim.text.diff or vim.diff
 local output_window
 local running = {}
 
@@ -269,7 +272,7 @@ function M.review(root, plan, apply, opts)
     local body = plan.files[path] or ''
     if type(before) == 'string' then
       body = 'Changes:\n\n'
-        .. (vim.text.diff or vim.diff)(before, body, { result_type = 'unified', ctxlen = 3 })
+        .. M.diff(before, body, { result_type = 'unified', ctxlen = 3 })
         .. (plan.files[path] == false and '\nFile will be removed.\n' or '\nComplete resulting file:\n\n')
         .. body
     end
