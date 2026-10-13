@@ -1,7 +1,11 @@
 -- Editor state shared by the command modules: configuration, the active
 -- project, and protected prompt/review helpers.
 local ui = require('rivet.ui')
-local M = { config = { projects_dir = nil, default_preset = 'debug', profiles = {} } }
+local M = {}
+---@type rivet.Config
+M.config = { projects_dir = nil, default_preset = 'debug', profiles = {} }
+---@type string?
+M.active_root = nil
 
 function M.protected(fn)
   return function(...)

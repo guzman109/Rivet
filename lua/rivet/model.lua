@@ -1,5 +1,6 @@
 -- The core intentionally has no Neovim or filesystem dependency.
 local M = {}
+---@type table<string, string|rivet.Provider>
 local languages = {
   cpp = 'rivet.languages.cpp',
   c = 'rivet.languages.c',
@@ -20,6 +21,8 @@ function M.list_languages()
   return result
 end
 
+---@param language string
+---@param adapter rivet.Provider
 function M.register(language, adapter)
   assert(type(language) == 'string' and language:match('^[a-z][a-z0-9_]*$'), 'invalid language id')
   assert(type(adapter) == 'table', 'language adapter must be a table')
@@ -30,11 +33,16 @@ function M.register(language, adapter)
   languages[language] = adapter
 end
 
+---@param opts table
+---@return rivet.Provider
 local function adapter(opts)
   local language = opts.language or 'cpp'
   local result = languages[language]
   assert(result, 'unsupported language: ' .. tostring(language))
-  return type(result) == 'string' and require(result) or result
+  if type(result) == 'string' then
+    return require(result)
+  end
+  return result
 end
 M.provider = adapter
 

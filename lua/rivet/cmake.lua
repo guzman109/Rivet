@@ -270,7 +270,7 @@ function M.sync_clangd(root, binary, configuration)
     json.encode({ binaryDir = binary, configuration = configuration })
   )
   if config == initial then
-    if _G.vim then
+    if rawget(_G, 'vim') then
       for _, buf in ipairs(vim.api.nvim_list_bufs()) do
         if vim.api.nvim_buf_get_name(buf) == config_path and vim.bo[buf].modified then
           return false, 'Save .clangd before migrating its compilation database setting'

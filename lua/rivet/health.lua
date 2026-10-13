@@ -12,9 +12,10 @@ function M.check()
   local options = { build_preset = state.build_preset }
   for _, client in ipairs(vim.lsp.get_clients({ name = 'clangd' })) do
     if not root or client.config.root_dir == root then
-      if type(client.config.cmd) == 'table' then
-        options.clangd = require('rivet.runtime').executable(client.config.cmd[1])
-        for _, arg in ipairs(client.config.cmd) do
+      local cmd = client.config.cmd
+      if type(cmd) == 'table' then
+        options.clangd = require('rivet.runtime').executable(cmd[1])
+        for _, arg in ipairs(cmd) do
           if arg == '--experimental-modules-support' then
             options.module_flag = true
           end

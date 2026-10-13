@@ -435,7 +435,7 @@ function M.main(args)
       if tasks.prepare then
         tasks.prepare()
       end
-      local r = rt.run(argv, { cwd = cwd or root })
+      local r = rt.run(argv, { cwd = root })
       if r.code == 0 and tasks.after_configure then
         local ok, message = tasks.after_configure()
         if not ok and message then

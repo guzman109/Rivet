@@ -279,7 +279,7 @@ function M.apply(root, plan)
     assert(not rt.is_dir(full), 'Destination is a directory: ' .. path)
   end
   local buffers = {}
-  if _G.vim then
+  if rawget(_G, 'vim') then
     for _, buf in ipairs(vim.api.nvim_list_bufs()) do
       local name = vim.api.nvim_buf_get_name(buf)
       if name ~= '' and not name:match('^%w+://') then
@@ -345,7 +345,7 @@ function M.apply(root, plan)
   end
   rt.run({ 'rmdir', lock })
   assert(ok, err)
-  if _G.vim then
+  if rawget(_G, 'vim') then
     -- Retire destination buffers before renaming a source into their name.
     -- No changed buffer may reach this point: the full plan was checked above.
     local destinations = {}

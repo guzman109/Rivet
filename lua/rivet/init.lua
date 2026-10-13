@@ -144,6 +144,7 @@ end
 
 -- plugin/rivet.lua calls setup() at startup and plugin managers may call it
 -- again with options; options merge and commands are registered once.
+---@param opts? rivet.Config
 function M.setup(opts)
   context.config = vim.tbl_deep_extend('force', context.config, opts or {})
   if not registered then

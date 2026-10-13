@@ -33,6 +33,7 @@ local function expand(text, context, env, origin)
 end
 function M.load(root)
   root = rt.absolute(root)
+  ---@type table<string, any>
   local db = {
     root = root,
     configure = {},

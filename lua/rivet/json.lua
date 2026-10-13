@@ -97,6 +97,8 @@ local function utf8(n)
     128 + n % 64
   )
 end
+---@param s string
+---@return any
 function M.decode(s)
   local i, parse = 1, nil
   local function ws()

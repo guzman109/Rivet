@@ -17,7 +17,9 @@ end
 local function mask(text)
   local out, i = {}, 1
   while i <= #text do
-    local rest, n = text:sub(i), 1
+    local rest = text:sub(i)
+    ---@type integer?
+    local n = 1
     if rest:sub(1, 2) == '//' then
       n = (rest:find('\n', 1, true) or (#rest + 1)) - 1
     elseif rest:sub(1, 2) == '/*' then

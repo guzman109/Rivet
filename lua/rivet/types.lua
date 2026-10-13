@@ -1,0 +1,89 @@
+---@meta
+-- LuaCATS definitions for the shapes passed between Rivet modules. This file
+-- is read by lua-language-server only; nothing requires it at runtime.
+
+---Options accepted by require('rivet').setup().
+---@class rivet.Config
+---@field projects_dir? string Parent folder for new projects; defaults to Neovim's cwd.
+---@field default_preset? string Configure preset chosen when none is remembered.
+---@field profiles? table<string, table> Reusable creation choices by name.
+---@field identity? rivet.HeaderIdentity Header details used instead of the saved identity.
+
+---@class rivet.HeaderIdentity
+---@field style? string
+---@field author? string
+---@field email? string
+---@field organization? string
+---@field date? string
+---@field copyright? string
+---@field license? string
+---@field description? string
+
+---A build target recorded in a project manifest.
+---@class rivet.Target
+---@field name string
+---@field kind string
+---@field source_dir? string
+---@field sources? string[]
+---@field headers? string[]
+---@field modules? string[]
+---@field resources? string[]
+---@field links? string[]
+---@field test? boolean
+
+---A pinned dependency recorded in a C/C++ manifest.
+---@class rivet.Dependency
+---@field name string
+---@field repository string
+---@field tag string
+---@field target string
+---@field link_to string
+
+---A normalized project manifest (.rivet.json). Providers add their own fields.
+---@class rivet.Spec
+---@field language string
+---@field name string
+---@field kind? string
+---@field standard? integer
+---@field modules? boolean
+---@field std_modules? boolean
+---@field layout? string
+---@field style? string
+---@field generator? string
+---@field header_guard? string
+---@field targets? rivet.Target[]
+---@field dependencies? rivet.Dependency[]
+---@field files? string[]
+---@field generated? table<string, string>
+---@field module_names? table<string, any>
+---@field comment_header? rivet.HeaderIdentity
+---@field license? string|table
+---@field external? boolean
+---@field [string] any
+
+---A reviewed set of file changes. A false file value removes that path.
+---@class rivet.Plan
+---@field spec rivet.Spec
+---@field files table<string, string|false>
+---@field managed? table<string, boolean>
+---@field root? string
+---@field [string] any
+
+---The interface a language provider implements; see docs/src/content/extending.svx.
+---Providers registered with require('rivet.model').register() must define
+---normalize, plan, add_file, add_target, and add_dependency.
+---@class rivet.Provider
+---@field label? string
+---@field services? table<string, string|table> Service module names, or service tables.
+---@field profile_fields? string[]
+---@field normalize fun(opts: table): rivet.Spec
+---@field plan fun(opts: table): rivet.Plan
+---@field add_file fun(spec: rivet.Spec, opts: table): rivet.Plan
+---@field add_target fun(spec: rivet.Spec, opts: table): rivet.Plan
+---@field add_dependency fun(spec: rivet.Spec, opts: table): rivet.Plan
+---@field questions? fun(kind: string, spec: rivet.Spec, context: table): table[]
+---@field default_name? fun(folder: string): string
+---@field formatter? fun(spec: rivet.Spec, filename: string, tools: table): string[]?
+---@field local_files? fun(spec: rivet.Spec, context: table): table<string, string>
+---@field ignore_rules? fun(spec: rivet.Spec?): string
+---@field lifecycle? fun(spec: rivet.Spec, opts: table, contents: table<string, string>): rivet.Plan

@@ -1,5 +1,9 @@
 -- Runtime services are registered by providers, never loaded from manifest module paths.
 local M = {}
+---Service modules differ by provider (for example CMake versus native task adapters).
+---@param spec table A spec, or at least { language = ... }
+---@param name string
+---@return any
 function M.service(spec, name)
   local service = (require('rivet.model').provider(spec).services or {})[name]
   assert(service, 'The ' .. (spec.language or 'cpp') .. ' provider does not support ' .. name)

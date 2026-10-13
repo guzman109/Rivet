@@ -35,6 +35,7 @@ function M.read(binary)
   if failed then
     return nil, 'The latest CMake configure failed; its older File API reply is stale'
   end
+  ---@return any
   local function read(name)
     return json.decode(
       assert(rt.read(rt.confined(directory, name)), 'CMake reply changed; configure again')

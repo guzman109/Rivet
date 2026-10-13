@@ -1,7 +1,7 @@
 -- POSIX adapter: argv are always shell-quoted on plain Lua; Neovim uses vim.system.
 local M = {}
 -- Inside Neovim, filesystem checks use libuv instead of spawning test(1).
-local uv = _G.vim and (vim.uv or vim.loop)
+local uv = rawget(_G, 'vim') and (vim.uv or vim.loop)
 local function stat_type(path, follow)
   local stat = (follow and uv.fs_stat or uv.fs_lstat)(path)
   return stat and stat.type
@@ -43,7 +43,7 @@ local function status(a, _, c)
 end
 function M.run(argv, opts)
   opts = opts or {}
-  if _G.vim and vim.system then
+  if rawget(_G, 'vim') and vim.system then
     local result =
       vim.system(argv, { cwd = opts.cwd, stdin = opts.stdin, text = true }):wait(opts.timeout)
     return { code = result.code, stdout = result.stdout or '', stderr = result.stderr or '' }

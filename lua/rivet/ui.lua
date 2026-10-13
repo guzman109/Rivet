@@ -269,7 +269,7 @@ function M.review(root, plan, apply, opts)
     local body = plan.files[path] or ''
     if type(before) == 'string' then
       body = 'Changes:\n\n'
-        .. vim.diff(before, body, { result_type = 'unified', ctxlen = 3 })
+        .. (vim.text.diff or vim.diff)(before, body, { result_type = 'unified', ctxlen = 3 })
         .. (plan.files[path] == false and '\nFile will be removed.\n' or '\nComplete resulting file:\n\n')
         .. body
     end
