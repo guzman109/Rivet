@@ -126,6 +126,23 @@ bun run deploy
 
 The configuration targets the domain root. A URL subdirectory requires coordinated SvelteKit base-path and content-link changes followed by both audits. Only `build/` is uploaded; dependencies and source files stay local.
 
+### Deploy from GitHub Actions
+
+The repository's `Checks` workflow includes a final **Deploy docs to Cloudflare** job. It runs after formatting, types, Linux, macOS, and docs checks pass for a push to `main`. CI saves the already validated `build/` directory as a commit-specific artifact; deployment downloads that artifact and uses the same commit's pinned Wrangler configuration. Pull requests and other branches do not deploy. Production deployments are serialized, and a run skips deployment if its commit is no longer the head of `main`.
+
+Set these repository secrets at **GitHub → Rivet → Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret                  | Value                                                                                                 |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account that owns `rivet-docs`.                                                        |
+| `CLOUDFLARE_API_TOKEN`  | A Cloudflare token using the **Edit Cloudflare Workers** permission template, scoped to that account. |
+
+Cloudflare documents [GitHub Actions authentication](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/) and [finding an account ID](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/). Enter credentials through GitHub's secret fields; the workflow never prints their values.
+
+After adding the secrets, push to `main`, or select **Actions → Checks → Run workflow → main**. A manual run performs all checks before deployment. Automatic runs without credentials skip publishing and list the missing secret names in the job summary; manual runs without credentials fail with the same setup instructions. The deployed Worker is named `rivet-docs` and uses its `workers.dev` address or an attached custom domain.
+
+If you connected this repository directly to Cloudflare Workers Builds, disconnect that connection in **rivet-docs → Settings → Builds** when using the GitHub Action, so the two systems do not compete to publish the site. Disconnecting Builds leaves the existing deployment online. No local Wrangler login or GitHub build-command fields are needed for the GitHub Action.
+
 For a deliberate dependency update, edit the exact versions in `package.json`, run `bun install`, then `bun run verify` and `bun run cf:check`. Review `bun.lock` with those edits. TypeScript remains on the compatible 6.x line.
 
 Reference documentation:

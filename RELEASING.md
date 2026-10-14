@@ -31,7 +31,9 @@ The Outset rename shims are deprecated and print a notice when used. Remove them
 
 The site remains SvelteKit, TypeScript, and mdsvex with the static adapter. Bun provides local development and builds. Wrangler serves and deploys the prerendered files as Cloudflare Worker static assets. The configuration uses Worker name `rivet-docs`; it has no account ID, token, or custom domain committed.
 
-Authenticate with `bun x --no-install wrangler login` from `docs/`, verify the intended account, then run `bun run deploy`. Choose the production hostname separately; no Keen Eyes domain is assumed. See [docs/README.md](docs/README.md) for local preview, dry-run, and CI secret configuration. A GitHub push only runs checks; it does not deploy to Cloudflare.
+GitHub Actions publishes the documentation after all five `Checks` jobs pass for a push to `main`, when `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` repository secrets are configured. It deploys the validated site artifact for that exact commit and skips commits superseded on `main`. Automatic runs without credentials leave a setup notice; a manual run fails with the missing secret names. Use Actions → Checks → Run workflow on `main` for a manual deployment.
+
+For a local deployment, authenticate with `bun x --no-install wrangler login` from `docs/`, verify the intended account, then run `bun run deploy`. Choose the production hostname separately; no domain is assumed. See [docs/README.md](docs/README.md) for credentials and deployment setup. Use one automatic publisher: disconnect Cloudflare's Git-connected Builds when using this GitHub Action.
 
 ## Publish with GitHub CLI
 
