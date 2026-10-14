@@ -1,12 +1,12 @@
 ---
 title: Runtime options and hooks
-description: Separate build settings from runtime arguments, environments, parallel resources, and explicit external tasks.
+description: Local task arguments, environments, resource settings, and external commands.
 section: Reference
-order: 25
-updated: '2026-10-13'
+order: 3
+updated: '2026-10-14'
 ---
 
-`:RivetRunOptions` edits a JSON object and previews the resulting `.rivet.local.json` before saving. New projects ignore this machine-local file. In an existing project, add it to your ignore rules when appropriate. Keep secrets in the process environment rather than writing them into command previews or shared files.
+`.rivet.local.json` holds per-project task settings. `:RivetRunOptions` edits the JSON and previews it before saving. Generated projects ignore this file; add an ignore rule in an existing project if needed.
 
 ```json
 {
@@ -18,26 +18,32 @@ updated: '2026-10-13'
 }
 ```
 
-Arguments are individual strings, not a shell command. Spaces, dollar signs, and shell metacharacters stay literal. `cwd` is a project-relative runtime directory; build/configure still operate at the project root. Environment values apply to task processes.
-
 ## Available fields
 
-| Field | Meaning |
+| Field | Type and effect |
 | --- | --- |
-| `args` | Array appended to application/profiler/benchmark arguments |
-| `cwd` | Runtime working directory, default project root |
-| `env` | Object of string environment values |
-| `jobs` | CMake/Cargo/Swift build concurrency |
-| `threads` | `OMP_NUM_THREADS` |
-| `ranks`, `gpus` | Positive integer hook parameters; no implicit allocation |
-| `launcher` | Argv prefix for Run, such as `mpiexec` |
-| `benchmark`, `profile` | Explicit command arrays; build first, then execute |
-| `submit`, `status`, `cancel` | Explicit cluster command arrays, without implicit build or polling |
-| `job_id` | User-supplied scheduler ID for status/cancel hooks |
-| `python`, `python_module`, `test_runner` | Python interpreter, module, and `unittest`/`pytest` selection |
-| `lua` | Local executable override matching the recorded Lua, LuaJIT, or Neovim runtime |
+| `args` | String array appended to Run, Benchmark, or Profile argv. |
+| `cwd` | Project-relative directory for Run, Benchmark, and Profile; defaults to the root. Other tasks use the root. |
+| `env` | Object of string environment values applied to task processes. |
+| `jobs` | Positive integer for CMake/Cargo/Swift build concurrency. |
+| `threads` | Positive integer setting `OMP_NUM_THREADS`, overriding that key in `env`. |
+| `ranks`, `gpus` | Positive integer hook parameters; setting them alone allocates no resources. |
+| `launcher` | Argv prefix for Run, such as `["mpiexec", "-n", "{ranks}"]`. |
+| `benchmark`, `profile` | Command arrays; the workflow configures and builds before executing the hook. |
+| `submit`, `status`, `cancel` | Command arrays; run without an implicit build or polling. |
+| `job_id` | Scheduler ID string for status/cancel hooks. |
+| `python` | Python interpreter override. |
+| `python_module` | Python module to run with `-m`. |
+| `test_runner` | `unittest` (default) or `pytest` for Python. |
+| `lua` | Executable override compatible with the project's Lua, LuaJIT, or Neovim runtime. |
 
-Native tooling can require additional optional components. An unavailable task reports its requirement instead of installing software. Repeat reuses the last task and current remembered choices.
+Arguments are individual strings; Rivet does not evaluate shell syntax. Keep secrets in the inherited environment when they should not appear in settings or command output. Optional tools must already be installed.
+
+## Hook placeholders
+
+Launcher and hook command arrays expand `{root}`, `{executable}`, `{ranks}`, `{threads}`, `{gpus}`, and `{job_id}`. Placeholder expansion does not apply to `args`, `env`, or `cwd`.
+
+Unset resource placeholders expand to `1`; using `{job_id}` requires `job_id`. For Benchmark/Profile, `{executable}` resolves the selected CMake artifact, Cargo build artifact, or SwiftPM executable. Python and Lua hooks should specify their interpreter and script/module command explicitly.
 
 ## Benchmark and profiler commands
 
@@ -48,7 +54,9 @@ Native tooling can require additional optional components. An unavailable task r
 }
 ```
 
-The programs in these examples must already be installed. `{executable}` resolves the selected CMake artifact, Cargo build artifact, or SwiftPM executable; it is not a guessed filename. `{root}`, `{ranks}`, `{threads}`, and `{gpus}` are also available. Python hooks can specify the interpreter/module command explicitly. Use your benchmark tool's native argument conventions when passing arguments to the measured command.
+This benchmark example assumes an executable path without spaces and no shared `args`. Hyperfine expects each measured command as one string: quote paths and include application arguments inside that string according to its [command syntax](https://github.com/sharkdp/hyperfine/blob/master/doc/hyperfine.1). Rivet appends shared `args` to Hyperfine itself, which does not forward them as application arguments. The [Nsight Systems command](https://docs.nvidia.com/nsight-systems/UserGuide/index.html) accepts application arguments after the executable.
+
+Select `:RivetTask benchmark` or `:RivetTask profile` to run the configured hook.
 
 ## Slurm examples
 
@@ -64,6 +72,6 @@ The programs in these examples must already be installed. `{executable}` resolve
 }
 ```
 
-Replace the example ID with the scheduler's returned ID before status/cancel. Review your site-specific batch script and account/partition requirements. Rivet runs these commands only when you select `:RivetTask submit`, `status`, or `cancel`; creating a project or saving the settings submits nothing. There is no background polling or automatic resubmission. [Slurm batch command reference](https://slurm.schedmd.com/sbatch.html).
+Supply your batch script and site-specific account, partition, and GPU settings. Run `:RivetTask submit`, then replace the example `job_id` with the returned job ID before selecting Status or Cancel. Rivet does not capture the ID or poll automatically. See the [Slurm batch reference](https://slurm.schedmd.com/sbatch.html).
 
-In the task output buffer, `Ctrl-C` stops the local task's process group, including build/compiler and application children. On macOS/Linux, Rivet sends TERM, then KILL after one second for surviving processes in that group. A child that deliberately creates a separate session is outside that group. Remote jobs already accepted by a scheduler need the explicit cancel hook.
+In the Neovim task output buffer, Ctrl-C terminates the local process group: TERM first, then KILL after one second on macOS/Linux. Children that create a separate session are outside that group. A scheduler job already accepted remotely needs the explicit Cancel hook.

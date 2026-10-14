@@ -2,8 +2,8 @@
 title: Configuration
 description: Setup defaults, reusable project profiles, local identity, and remembered task choices.
 section: Reference
-order: 23
-updated: '2026-10-13'
+order: 2
+updated: '2026-10-14'
 ---
 
 Rivet installs commands without default key mappings. Configure the editor with `require('rivet').setup(options)`.
@@ -44,9 +44,9 @@ require('rivet').setup({
 })
 ```
 
-These saved creation profiles choose a starting point; every answer is still editable and the complete file plan is reviewed before creation. They do not install tools. The C++ `profile` field selects a workload: `general` creates the ordinary starter, while `cpu`, `openmp`, `mpi`, `cuda`, `metal`, `webgpu`, `vulkan`, and `opengl` add dedicated examples and runtime tests. This workload setting is separate from the name of your saved creation profile.
+Creation profiles prefill editable wizard answers. The C++ `profile` field selects a workload (`general`, `cpu`, `openmp`, `mpi`, `cuda`, `metal`, `webgpu`, `vulkan`, or `opengl`); it is independent of your saved profile's name. See the [CLI options](/docs/cli/) for creation defaults.
 
-## Save choices from a project
+## Creation profiles
 
 Run `:RivetProfile` inside a Rivet project, give the profile a name, and approve its preview with `c`. All profiles save `language`; additional fields are:
 
@@ -59,13 +59,13 @@ Run `:RivetProfile` inside a Rivet project, give the profile a name, and approve
 | Swift | `kind` |
 | Lua | `kind`, `runtime` |
 
-Project names, destinations, compiler paths, dependencies, files, Git actions, and identity are excluded. The next creation wizard offers your named profiles. Backspace returns to earlier preview questions; text prompts accept `:back`. Back navigation and cancellation do not write a project.
+Project names, destinations, compiler paths, dependencies, files, Git actions, and identity are excluded. Saved profiles appear in the next creation wizard.
 
-## Remember header details explicitly
+## Header identity
 
 `:RivetIdentity` collects optional details, previews styles, and then asks you to apply the local preference. The creation wizard offers **Use saved identity and preview styles**; you can edit or omit those details for each project. Nothing is inferred from your OS account or Git configuration.
 
-The `identity` setup option uses the same `style`, `author`, `email`, `organization`, `created`, `copyright`, `license`, and `description` fields as [file comment headers](/docs/comment-headers/). Ada Lovelace in the examples is a placeholder; new fields are not populated with her identity automatically.
+The `identity` setup option accepts `style`, `author`, `email`, `organization`, `created`, `copyright`, `license`, and `description`; see [file comment headers](/docs/comment-headers/).
 
 Saved profiles and identity live in `stdpath('state')/rivet/preferences.json`. Remove a named entry or the `identity` property there to forget it. Existing projects retain their own manifest defaults; `:RivetHeaderDefaults` changes those separately.
 
@@ -75,9 +75,9 @@ Configure/build/test presets, the Build target, application, and last task are s
 
 Creation profiles and CMake presets serve different purposes: profiles start a new project, while CMake presets configure and run builds inside one. See [CMake and tasks](/docs/cmake/) for their commands and selection rules.
 
-## Edit clang tool configuration
+## Clang tool configuration
 
-Run `:RivetConfig` (or `:Rivet config`) and choose clang-format, clang-tidy, or clangd. Each curated key shows its meaning, accepted type, current value, and available choices. Values show their effect before the full file diff is reviewed. The per-check options entry accepts an exact `check.option` key. **Open YAML** opens the underlying file for every option supported by your installed tool, including advanced blocks and conditional clangd fragments. Complex YAML that the guided editor cannot safely preserve is left for direct editing.
+`:RivetConfig` (or `:Rivet config`) edits common clang-format, clang-tidy, and clangd settings. Each entry shows its meaning, type, current value, and choices before a file-diff review. Per-check options accept a `check.option` key. **Open YAML** opens the full configuration, including complex or conditional blocks the guided editor cannot preserve.
 
 ```vim
 :RivetConfig clang-format
@@ -85,15 +85,14 @@ Run `:RivetConfig` (or `:Rivet config`) and choose clang-format, clang-tidy, or 
 :RivetConfig clangd
 ```
 
-The generated defaults are valid starting points: clang-format inherits the selected upstream style; clang-tidy enables explicit analyzer, bug-prone, performance, and selected modernize checks without making warnings errors; clangd points at Rivet’s selected compilation database. They do not select compiler flags or guarantee that every diagnostic is suitable for your code. Adjust checks after reviewing their results. New C++ files use the current project `.clang-format`.
+Generated clang-format settings inherit the selected style; clang-tidy enables analyzer, bug-prone, performance, and selected modernize checks; clangd points at the selected compilation database. New C++ files use the current project `.clang-format`.
 
-The guided editor validates with installed tools when available and says when native validation was skipped. Available keys and accepted values depend on the installed LLVM version. The catalog intentionally covers common options; use the complete official references for [clang-format](https://clang.llvm.org/docs/ClangFormatStyleOptions.html), [clang-tidy](https://clang.llvm.org/extra/clang-tidy/), and [clangd](https://clangd.llvm.org/config).
+The editor validates with installed tools when available and reports skipped validation. Accepted values depend on the installed LLVM version. Full references: [clang-format](https://clang.llvm.org/docs/ClangFormatStyleOptions.html), [clang-tidy](https://clang.llvm.org/extra/clang-tidy/), and [clangd](https://clangd.llvm.org/config).
 
 ```sh
 rivet config clang-format
 rivet config clang-format IndentWidth 4 --preview
 rivet config clang-tidy Checks '-*,clang-analyzer-*,bugprone-*' --preview
-rivet upgrade --preview
 ```
 
-Updating the plugin and [upgrading a project](/docs/upgrading/) are separate steps. Locally edited tool configuration is preserved by project upgrades.
+[Project upgrades](/docs/upgrading/) preserve locally edited tool configuration.

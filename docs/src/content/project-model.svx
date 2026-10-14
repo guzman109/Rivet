@@ -1,0 +1,35 @@
+---
+title: How Rivet works with your project
+description: Why Rivet records generated files, reviews changes, and delegates tasks to native tools.
+section: Explanation
+order: 1
+updated: '2026-10-14'
+---
+
+Rivet creates project files and runs commands for the selected language. The generated project remains usable through CMake, Cargo, SwiftPM, Python, or Lua without opening Neovim. The plugin and CLI share the same project model, so their file plans use the same templates and validation.
+
+## Generated and existing projects
+
+A project created by Rivet has a `.rivet.json` manifest. It records choices such as language, layout, and registered files, plus snapshots of files Rivet may update. That record lets Rivet add a source and update the corresponding generated build fragment together.
+
+An existing project can be discovered through its native configuration, such as `CMakeLists.txt` or `Cargo.toml`. Rivet can run native tasks and create files there without creating a manifest. Discovery alone cannot tell Rivet how an arbitrary hand-written build definition should be rewritten, so it does not adopt that definition. The [existing-project workflow](/docs/existing-projects/) describes the available operations.
+
+## Why changes have a review
+
+A file plan contains proposed contents and the current contents they depend on. In Neovim, the review is the point where you accept that plan. In the CLI, `--preview` displays a plan without applying it; a later command without `--preview` computes and applies a fresh plan.
+
+Rivet compares affected files with their expected contents before writing. It refuses replacements that would discard hand edits to an owned fragment or changes made while a review was open. This is why CMake customization belongs in the root `CMakeLists.txt` or a separate included file, outside the generated fragments.
+
+[Repair](/docs/troubleshooting/#recover-an-edited-managed-file) restores a recorded snapshot and saves the edited copy. [Upgrade](/docs/upgrading/) compares supplementary files with newer templates. They solve different problems: recovering an owned file versus adopting template changes.
+
+## Shared choices and local settings
+
+The manifest and native build files describe the project. Machine-specific compiler paths and SDK locations belong in `CMakeUserPresets.json`; local interpreter selection, run arguments, and environment variables belong in `.rivet.local.json`. Keeping these separate lets collaborators use the same project with different installed tools.
+
+Neovim also remembers task and target selections in its state directory. Those editor preferences are separate from both project configuration and the local task-options file. See [configuration](/docs/configuration/) and [task options](/docs/task-options/) for the exact fields.
+
+## What a task result means
+
+Tasks delegate to the provider's tools. Their names describe a workflow, but their checks differ: C++ Build compiles and links, while Python and Lua Build check syntax. Test executes the configured tests. [Doctor](/docs/doctor/) checks prerequisites and configuration; it cannot establish that an application behaves correctly.
+
+GPU tests also need a usable device or graphics context. A skipped hardware test means that behavior was not exercised, even if CTest itself succeeds. The [compatibility reference](/docs/compatibility/) distinguishes tool requirements from test coverage.

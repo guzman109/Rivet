@@ -1,60 +1,38 @@
 ---
 title: Rust and Cargo
-description: Create applications, libraries, and workspaces while keeping Cargo in charge of builds and dependencies.
-section: Guides
-order: 20
-updated: '2026-10-13'
+description: Generated Rust projects, Cargo task mappings, binary discovery, and source operations.
+section: Reference
+order: 11
+updated: '2026-10-14'
 ---
 
-Choose Rust, then an application, library, or workspace. Editions 2024 and 2021 are offered, with 2024 first. The starter has a dependency-free library, a correctness test, and an application when requested.
+The Rust provider creates applications, libraries, or a workspace containing one application/library package. Editions 2024 (default) and 2021 are available. Follow [Your first Rust project](/docs/first-rust-project/) for the creation walkthrough.
 
-## First run in Neovim
+## Generated project
 
-After [loading Rivet](/docs/start-here/), make and open a folder you choose:
+Every starter includes a dependency-free `src/lib.rs` with `add` and a unit test. Applications add `src/main.rs`, which prints `42`. A workspace places both under `crates/<name>/` and declares that package in the root `Cargo.toml`.
 
-```sh
-mkdir compute_demo
-cd compute_demo
-nvim
-```
+## Tasks
 
-1. Run `:RivetNew`, choose **New choices** if a profile menu appears, then select `rust`, **Current folder**, and `compute_demo`.
-2. Choose Git and comment-header preferences. Select **Cargo workspace with an application and library**, then edition **2024**. Review and apply with `c`.
-3. Open `crates/compute_demo/src/main.rs`. Run `:RivetTask run` and select Debug; the application prints `42`.
-4. Run `:RivetTask test`. The library's correctness test should pass. Cargo may also report binary/doc-test suites containing zero tests.
-5. Run `:RivetFile`, select **rust**, choose **Source file** after checking the header preview, enter `feature`, and add `mod feature;` to the appropriate `main.rs` or `lib.rs`. Save and run `:RivetTask check` to compile the change.
-
-To try error navigation, temporarily change the call to `add` in `main.rs` to `missing`, save, and run Check. Use `:copen` to jump to the compiler diagnostic, correct the name, then `:RivetTask repeat`.
-
-The equivalent optional CLI workflow is:
-
-```sh
-rivet new compute_demo --language rust --kind workspace --edition 2024
-rivet test --root compute_demo
-rivet run --root compute_demo
-```
-
-The workspace contains `crates/compute_demo`. Tests check `add(20, 22) == 42` and `add(-1, 1) == 0`; the executable prints `42`.
-
-## Cargo owns the workflow
-
-| Task | Cargo operation |
+| Rivet task | Cargo operation |
 | --- | --- |
 | Configure | `metadata --format-version 1 --no-deps` |
-| Check / Build / Test | Native command across workspace members |
-| Run | Selected package and binary, with arguments after `--` |
+| Check | `check --workspace` |
+| Build | `build --workspace` |
+| Test | `test --workspace` |
+| Run | `run --package <package> --bin <binary> -- <arguments>` |
 | Format | `fmt --all` |
-| Lint | `clippy` with warnings denied |
-| Package | `package --workspace --no-verify` (does not publish) |
+| Lint | `clippy --workspace -- -D warnings` |
+| Package | `package --workspace --no-verify` |
 
-Debug and Release map to Cargo's ordinary profiles. `jobs` controls Cargo build concurrency. Install rustfmt/Clippy components explicitly if your toolchain lacks them.
+Release adds `--release` to Check, Build, Test, Run, and Lint. The local `jobs` option controls their build concurrency. Format requires rustfmt; Lint requires Clippy. Package creates Cargo packages without publishing or verifying their contents by compiling them.
 
-Binary discovery comes from `cargo metadata`, including workspaces. The picker shows package and binary together; an explicit CLI selector can use `package::binary`. Build diagnostics use Cargo JSON compiler messages and primary spans for quickfix. [Cargo's editor integration interfaces](https://doc.rust-lang.org/cargo/reference/external-tools.html).
+Binary discovery uses `cargo metadata`. The picker identifies both package and binary; CLI selectors accept `package::binary` or an unambiguous binary name. Compiler JSON messages supply source locations for quickfix. These are Cargo's documented [editor integration interfaces](https://doc.rust-lang.org/cargo/reference/external-tools.html).
 
-## Add and edit code
+## Source and manifest ownership
 
-`:RivetTarget` adds an application under `src/bin/` (inside the generated member for a workspace). Cargo discovers that binary natively. `:RivetFile` adds a `.rs` module file; declare it with `mod feature;` or `pub mod feature;` in the appropriate parent module when you want it compiled. Rivet does not guess your Rust visibility or module hierarchy.
+`:RivetFile` creates a `.rs` file. A bare name goes under `src/`, inside the generated package for workspaces. Declare the module with `mod feature;` or `pub mod feature;` in its parent module to include it in compilation.
 
-Use `cargo add`, `cargo remove`, and workspace manifests for dependency and member changes. Existing `Cargo.toml` projects are discovered without creating `.rivet.json`. Rivet preserves their dependencies, features, build scripts, and lockfiles.
+`:RivetTarget` adds an application under `src/bin/`. Additional libraries and workspace members belong in Cargo manifests. Use `cargo add`, `cargo remove`, or direct manifest edits for dependency changes.
 
-For compiler problems, open `:copen`, fix the selected span, and `:RivetTask repeat`. Local task settings and custom profiler commands are described in [Task options](/docs/task-options/).
+Existing `Cargo.toml` projects work without `.rivet.json`; native tasks discover their binaries through Cargo. Cargo may update its lockfile or build output as part of those tasks. Runtime arguments and profiler commands are described in [Task options](/docs/task-options/).

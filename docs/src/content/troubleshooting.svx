@@ -1,12 +1,12 @@
 ---
 title: Troubleshooting
 description: Resolve toolchain, module, cache, and generated-file problems in a predictable order.
-section: Reference
-order: 21
-updated: '2026-10-13'
+section: How-to guides
+order: 7
+updated: '2026-10-14'
 ---
 
-Start with the failed task and its first error. The CMake sections below apply to C/C++; Python, Cargo, SwiftPM, and Lua use their native task output and environment. Configuration, compilation, editor diagnostics, and runtime checks establish different things.
+Start with the failed task and its first error. Run `:RivetDoctor` or `rivet doctor --root PATH` to check the selected tools and configuration. [Doctor reference](/docs/doctor/) lists what those checks cover. The CMake sections below apply to C/C++.
 
 ## No Rivet project found
 
@@ -17,24 +17,6 @@ rivet build --root ./engine
 ```
 
 Native tasks and generic file creation work without a Rivet manifest. Generated target changes and registered source-list operations require one; discovering an existing project does not adopt its source lists. Use `--root .` for CLI file creation in an ordinary folder. See [Existing projects](/docs/existing-projects/).
-
-## What Doctor checks
-
-Run `:RivetDoctor` in the project, or `rivet doctor --root PATH`. Warnings describe missing optional tools or checks needing configuration; errors produce a nonzero CLI status. A clean report is not a substitute for Build, Test, or an actual GPU run.
-
-| Provider or profile | Checks | Still verify by running the workflow |
-| --- | --- | --- |
-| C++ | Selected preset/compiler, scanner and module requirements, compilation database and clangd settings | Actual feature support, linking, tests, runtime behavior |
-| C | Configured compiler from CMake File API; warns before a reply is available | Compiler standard support and actual build/test |
-| Python | Selected interpreter/environment, Python 3.11+, Ruff, packaging `build` for ordinary Python, selected pytest, uv where applicable | Imports, dependency compatibility, package creation, test results |
-| Rust | Cargo availability, rustfmt/Clippy commands, native target metadata | Successful compilation, lint, tests, runtime |
-| Swift | Swift availability, `swift format`, native target metadata | Package compilation, tests, Apple app integration |
-| Lua | Selected runtime/version and optional StyLua/Luacheck availability | Syntax, module loading, assertions, application or plugin behavior |
-| OpenMP / MPI / CUDA | Relevant configured CMake compiler/runtime settings | Working runtimes, rank/thread behavior, NVCC host compatibility, actual devices |
-| Metal | macOS, Xcode Metal compiler, configured header path | Shader compilation and GPU pixel check |
-| Dawn / Vulkan / OpenGL | Configured SDK/loader/GLFW locations; explains runtime prerequisites | Vulkan shader tools and validation layers, working device/context, actual rendering |
-
-Configure first when a check needs CMake cache or File API data. Doctor does not install anything. Native package metadata discovery can evaluate `Package.swift` through SwiftPM.
 
 ## CMake cannot compile the project
 
@@ -66,11 +48,11 @@ Build your selected preset first; for example:
 rivet build --preset debug
 ```
 
-Rivet refreshes `.cache/rivet/compile_commands.json` from the selected build after configure. Doctor identifies a missing or stale copy. Custom `.clangd` files are preserved; set `CompilationDatabase: .cache/rivet` if you want them to follow Rivet. Module artifacts are produced by the build, so configuration alone may leave `module 'std' not found` diagnostics.
+After configure, Rivet copies an available compilation database from the selected build to `.cache/rivet/compile_commands.json`. Doctor identifies a missing or stale copy. Custom `.clangd` files are preserved; set `CompileFlags.CompilationDatabase` to `.cache/rivet` to follow Rivet. Module artifacts are produced by the build, so configuration alone may leave `module 'std' not found` diagnostics.
 
 Check that clangd has module support enabled and uses the intended toolchain. Its module support is experimental; the existing Neovim LSP configuration remains responsible for starting it. Restart clangd if diagnostics persist after generating previously missing artifacts.
 
-Compare editor diagnostics with an actual build before changing working code solely to satisfy the language server. A missing declaration in clangd does not by itself prove that the compiler or standard library lacks that feature. The starter uses `std::cout`; this is not a general restriction on using `std::println`. See [clangd’s module-support status](https://clangd.llvm.org/features#experimental-c20-modules-support).
+Compare editor diagnostics with an actual build before changing code solely to satisfy the language server. See [clangd’s module-support status](https://clangd.llvm.org/features#experimental-c20-modules-support).
 
 ## A generated-file update is refused
 
@@ -101,7 +83,7 @@ The CLI shows the same plan with `rivet repair cmake/RivetTargets.cmake --previe
 
 ## Native tools and hardware
 
-Check Doctor's coverage above and the selected environment before installing optional tools. SDK cache entries alone do not prove the entire SDK or runtime works. [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), and [graphics](/docs/graphics/) explain prerequisites and their first successful run.
+Check the selected environment and the prerequisites in [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), or [graphics](/docs/graphics/). A configured SDK path alone does not establish that the runtime works.
 
 A generated GPU **test executable** returns 77 when hardware/context is unavailable. Its `SKIP_RETURN_CODE` property makes CTest report it as skipped; **CTest itself can exit 0 even when that GPU test did not run**. Inspect the skipped-test list or your CI's CTest results, not just the command status or aggregate percentage. Build errors and wrong readback pixels remain failures. [CMake skip-return-code behavior](https://cmake.org/cmake/help/latest/prop_test/SKIP_RETURN_CODE.html).
 
@@ -117,4 +99,4 @@ If you deliberately want the original generated manifest back:
 2. Review both the restoration and the `.rivet-recovery/.../Package.swift` backup containing your customization.
 3. Apply only if restoring that snapshot is intended, then build and test.
 
-Repair does not merge dependencies, platforms, products, or targets. Reapplying custom settings makes the manifest customized again; Rivet target generation will again refuse to replace it. Unlike CMake, there is no separate `CMakeLists.txt` extension location for Swift package settings.
+Repair does not merge dependencies, platforms, products, or targets. Reapplying custom settings makes the manifest customized again; Rivet target generation will again refuse to replace it.

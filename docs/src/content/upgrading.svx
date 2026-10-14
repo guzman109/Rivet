@@ -1,52 +1,50 @@
 ---
 title: Upgrade generated project files
-description: Review newer supplementary templates while preserving application code, local configuration edits, and native project ownership.
-section: Guides
-order: 26
-updated: '2026-10-13'
+description: Review newer supplementary templates and preserve local customizations.
+section: How-to guides
+order: 6
+updated: '2026-10-14'
 ---
 
-Updating the Rivet plugin makes its newer commands and templates available. To bring an existing Rivet-owned project’s supplementary files forward, run `:RivetUpgrade` or `:Rivet upgrade`. Review the complete diff before pressing `c`; `q` cancels.
+Use this workflow after updating Rivet through your plugin manager and restarting Neovim. The project must have a `.rivet.json` manifest. Upgrade updates supplementary templates using the project's saved choices; it preserves application sources and tests.
+
+## Review and apply
+
+1. Open a file in the project and run `:RivetUpgrade`.
+2. Review the proposed files and skipped-conflict notes. Depending on the provider, files may include editor settings, CMake helpers, presets, README guidance, or plugin help.
+3. Press `c` to apply, or `q` to cancel.
+4. Run the project's Build and Test tasks to check the updated configuration.
+
+From the CLI, preview first:
 
 ```sh
 rivet upgrade --root ./my_project --preview
+```
+
+Then apply:
+
+```sh
 rivet upgrade --root ./my_project
 ```
 
-Upgrade uses the project’s current `.rivet.json` choices. It does not recreate the project, overwrite application sources, or change the selected language, standard, runtime, or dependency pins.
+The second command computes a fresh plan. Keep the project unchanged between inspection and application. Neither command changes the selected language, standard, runtime, or dependency pins.
 
-## What can be upgraded
+## Handle a skipped customization
 
-Each provider declares its supplementary templates. Depending on the language, these include editor/tool configuration, generated CMake helpers, preset templates, README/project guidance, and plugin help files. The review lists every proposed file and explains every skipped conflict.
+Upgrade replaces a supplementary file when it still matches its recorded baseline. It can also restore a missing supplementary file or record a baseline for a file already equal to the current template.
 
-New projects record the generating Rivet version and supplementary template snapshots in `.rivet.json`:
+If you edited a file, Rivet preserves it and reports the conflict. You can keep that customization. To compare newer defaults, create a separate project with the same language and settings, compare the corresponding file, and merge useful changes manually. The old baseline remains recorded, so another Upgrade does not treat your customization as an untouched template. There is no force-overwrite option.
 
-| Metadata | Purpose |
-| --- | --- |
-| `rivet_version` | Version that last created or reviewed the project’s supplementary templates |
-| `template_baselines` | Last adopted text for provider-declared supplementary files |
-| `generated` | Existing snapshots for manifest-managed build files |
+If a file changes while the Neovim review is open, or an affected buffer has unsaved edits, application stops. Save your work and start a new review.
 
-Application sources and tests are preserved. Machine-local settings such as `.rivet.local.json` and `CMakeUserPresets.json` remain local. Existing projects without `.rivet.json` retain native ownership; this command does not adopt their source lists.
+## Upgrade an older project
 
-## How conflicts are handled
+Older manifests may lack `template_baselines`. An existing file is adopted only if it matches the current template or a recorded managed snapshot; otherwise Rivet leaves it alone. Missing supplementary files can still be created. Missing application sources are not restored.
 
-A supplementary file can be updated when its current contents still match the recorded baseline. A missing supplementary file can be restored. A file already equal to the current template can have its baseline recorded without changing its contents.
+After application, `.rivet.json` records the current `rivet_version` and the baselines it could adopt. Local task settings in `.rivet.local.json` and machine-specific `CMakeUserPresets.json` settings are preserved.
 
-If you edited the file, Upgrade preserves it and reports the conflict. Its old baseline stays in the manifest, so a skipped customization is not silently adopted as a generated default. This covers customized `.clang-format`, `.clang-tidy`, `.clangd`, documentation, and hand-written CMake extensions. For example, a root `CMakeLists.txt` extended with an embedded Lua host keeps that include.
+## Choose another operation when needed
 
-Read the proposed new template and merge useful changes into a customized file manually. There is no blanket force-overwrite step. The final apply checks file snapshots again and rejects edits made since preview, unsafe paths, and modified Neovim buffers. Existing file permissions are preserved during replacement.
-
-## Older projects without snapshots
-
-Older manifests may not record supplementary provenance. Rivet does not assume every familiar filename is an untouched template. It adopts an existing file only when it exactly matches the current template or has a recorded managed snapshot; otherwise the review explains that provenance is unavailable and leaves it alone.
-
-Missing provider-declared supplementary files can still be created. Application files are not restored through this command. After reviewing and applying the upgrade, the manifest records the current Rivet version and the baselines that could safely be adopted.
-
-## Upgrade, repair, and legacy migration
-
-Use **Upgrade** to review current provider templates for an already Rivet-owned project.
-
-Use `:RivetRepair` or `rivet repair MANAGED_FILE` to restore a manifest-managed file to its last recorded generated contents. Repair preserves the edited copy under `.rivet-recovery/`; it restores a snapshot rather than upgrading to a new template.
-
-Use `:RivetMigrate` or `rivet migrate --preview` for a legacy Outset project containing `.outset.json`. Migration is a separate reviewed conversion to Rivet’s naming and manifest format. Run that workflow before using Rivet project operations; Upgrade does not replace the legacy migration step.
+- To restore an edited managed file to its recorded contents, use [Repair](/docs/troubleshooting/#recover-an-edited-managed-file). Repair saves the edited copy under `.rivet-recovery/`.
+- For a legacy project with `.outset.json`, first review `:RivetMigrate` or `rivet migrate --preview`. Upgrade does not perform that conversion.
+- For a project without a Rivet manifest, use the [existing-project workflow](/docs/existing-projects/).

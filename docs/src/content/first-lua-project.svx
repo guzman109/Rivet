@@ -1,12 +1,12 @@
 ---
 title: Your first Lua project
-description: Create a Lua application, add a reusable module, check syntax, and run its tests from Neovim or the CLI.
-section: Start here
-order: 9
-updated: '2026-10-13'
+description: Create a Lua application, add a reusable module, check syntax, and run its tests in Neovim.
+section: Tutorials
+order: 5
+updated: '2026-10-14'
 ---
 
-This walkthrough creates `lua_demo`, a Lua application with a reusable module and a dependency-free test. You will add a function, call it from the application, and follow a syntax error through quickfix. The same project wizard also creates libraries and Neovim plugins.
+This walkthrough creates `lua_demo`, a Lua application with a reusable module and a dependency-free test. You will add a function, call it from the application, and follow a syntax error through quickfix.
 
 ## Check the runtime
 
@@ -16,9 +16,7 @@ This walkthrough creates `lua_demo`, a Lua application with a reusable module an
 lua -v
 ```
 
-Lua 5.1 or newer works with the generated templates. LuaJIT is another runtime choice; check it with `luajit -v` and choose LuaJIT in the wizard if that is what you intend to run. Choosing Neovim runs scripts in a clean headless Neovim instead. CMake and a C/C++ compiler are unnecessary for a standalone Lua project.
-
-Rivet does not install the runtime or LuaRocks packages. StyLua and Luacheck are optional tools for formatting and linting. The selected interpreter checks your actual language syntax; the generated editor and lint configuration starts with portable Lua 5.1 or LuaJIT settings.
+Lua 5.1 or newer works with the generated templates. This walkthrough selects the `lua` runtime.
 
 ## Create the application
 
@@ -32,31 +30,31 @@ nvim
 
 Confirm the directory with `:pwd`, then run `:RivetNew`. If you see saved profiles first, choose **New choices**. Use these options:
 
-| Prompt | Choice |
-| --- | --- |
-| Project language | `lua` |
-| Create project in | Current folder |
-| Project name | `lua_demo` |
-| Git repository | Skip Git initialization, or initialize/reuse a repository |
-| Project license | No license yet, or the license you have chosen for your project |
-| File comment headers | No header, or personalize and preview styles |
-| Lua project kind | Application / script |
-| Lua runtime | Lua (portable 5.1+ templates) |
+| Prompt               | Choice                        |
+| -------------------- | ----------------------------- |
+| Project language     | `lua`                         |
+| Create project in    | Current folder                |
+| Project name         | `lua_demo`                    |
+| Git repository       | Skip Git initialization       |
+| Project license      | No license yet                |
+| File comment headers | No header                     |
+| Lua project kind     | Application / script          |
+| Lua runtime          | Lua (portable 5.1+ templates) |
 
 Read the final file tree and previews. Press `c` or Ctrl-S to create the project; `q` cancels. Ordinary pickers use Enter to select an option. Files go directly into `lua_demo`, with no second nested folder.
 
 The starter includes:
 
-| File | Purpose |
-| --- | --- |
-| `main.lua` | Runnable application |
-| `lua/lua_demo/init.lua` | Reusable module with an `add()` function |
-| `tests/test.lua` | Assertions for the module |
-| `.rivet.json` | Project, runtime, files, and targets |
+| File                                         | Purpose                                    |
+| -------------------------------------------- | ------------------------------------------ |
+| `main.lua`                                   | Runnable application                       |
+| `lua/lua_demo/init.lua`                      | Reusable module with an `add()` function   |
+| `tests/test.lua`                             | Assertions for the module                  |
+| `.rivet.json`                                | Project, runtime, files, and targets       |
 | `.luarc.json`, `.luacheckrc`, `.stylua.toml` | Editor, lint, and formatting configuration |
-| `README.md`, `AGENTS.md` | Project guidance |
+| `README.md`, `AGENTS.md`                     | Project guidance                           |
 
-The scripts find the project's `lua/` directory relative to their own location. They can run from another working directory without installing the module globally. Creating the project does not run its source code or download dependencies. Git initialization, when selected, creates no commit.
+The scripts find the project's `lua/` directory relative to their own location. They can run from another working directory without installing the module globally.
 
 ## Check, run, and test
 
@@ -68,7 +66,7 @@ Open the entry point and check the project:
 :RivetTask check
 ```
 
-Choose **debug** on the first task. Debug and Release currently use the same Lua operations. Rivet remembers the preset for this project; `:RivetPreset` changes it.
+Choose **Debug / development** on the first task. Rivet remembers it for subsequent tasks.
 
 Check compiles the registered Lua files to verify syntax without executing their bodies. `:RivetTask build` performs the same syntax check; it does not create a binary. Run and Test execute code:
 
@@ -79,13 +77,13 @@ Check compiles the registered Lua files to verify syntax without executing their
 
 Run prints `42`. Test prints `Lua correctness tests passed`. Successful task output ends with `Exit status: 0`.
 
-Press `q` to close the output view while a task runs or after it finishes. Enter also closes completed output. `:RivetOutput` reopens this project's latest output, and `:RivetStop` or Ctrl-C in the output stops a running task. `:RivetTask repeat` repeats the last task. Keep your files saved before starting a task; Rivet reads their saved contents.
+Press `q` to close output and `:RivetOutput` to reopen it. Wait for each task to finish before starting the next, and save your edits first.
 
 ## Add a module and test it
 
 Run `:RivetFile`, select **lua**, then **Module returning a table**. Choose the `lua_demo_core` module target and name the file `numbers`. Review and approve the new `lua/lua_demo/numbers.lua`.
 
-Keep any optional comment header and replace the module body with:
+Replace its contents with:
 
 ```lua
 local M = {}
@@ -114,58 +112,12 @@ assert(numbers.square(-2) == 4)
 
 Save with `:wall`, then run `:RivetTask check`, `:RivetTask run`, and `:RivetTask test`. The application now also prints `36`, and the assertions check the function's behavior.
 
-To create another entry point, use `:RivetFile`, select Lua, and choose **Runnable script**. A bare name such as `report` creates `scripts/report.lua` and a separate executable target. Use `:RivetRunTarget` to select it when the project has multiple runnable scripts. A name containing `/`, such as `tools/report.lua`, selects that project-relative path instead.
-
 ## Follow a syntax error
 
 Temporarily change the function's return line to `return value *`, save, and run `:RivetTask check`. The task should fail with a syntax error in `numbers.lua`.
 
 Run `:copen` and press Enter on the diagnostic to jump to the file and line. Restore `return value * value`, save, and run `:RivetTask repeat`. Check should succeed; run Test again to verify the behavior. A syntax check cannot detect a wrong result such as returning `value + value`, which is why the assertions matter.
 
-If installed, `:RivetTask format` runs StyLua and `:RivetTask lint` runs Luacheck. Missing optional tools produce an installation message; Rivet does not install them automatically. Use `:RivetRunOptions` to review application arguments, environment, working directory, or a local `lua` executable override. The override must match the recorded runtime, for example an `nvim` executable for Neovim.
+## Next steps
 
-## Try a library or Neovim plugin
-
-For a reusable library, start another `:RivetNew` wizard and choose **Reusable Lua library**. It creates the module and test without `main.lua`; Check and Test work as above. Run becomes available after you add an application target or runnable script.
-
-For a plugin named `greeting_plugin`, choose **Neovim plugin**. The wizard selects Neovim automatically and skips the runtime question. The project includes `lua/greeting_plugin/init.lua`, `plugin/greeting_plugin.lua`, `doc/greeting_plugin.txt`, and a test. `:RivetTask test` launches a clean headless Neovim and checks the module, setup options, and generated `:GreetingPluginHello` command.
-
-To try the plugin in your regular editor, add its folder through your normal plugin configuration and call:
-
-```lua
-require('greeting_plugin').setup({ greeting = 'Hello from my plugin' })
-```
-
-Creation does not install or activate that plugin in your current session. See [Lua projects and embedding](/docs/lua/#neovim-plugins) for the runtime and plugin details.
-
-## Use the CLI
-
-With the optional `rivet` launcher on your PATH, the application walkthrough starts with:
-
-```sh
-rivet new lua_demo --language lua --kind app --runtime lua --preview
-rivet new lua_demo --language lua --kind app --runtime lua
-rivet check --root lua_demo
-rivet run --root lua_demo
-rivet test --root lua_demo
-```
-
-From the project folder, add files with reviewed plans:
-
-```sh
-rivet file numbers --language lua --kind module --preview
-rivet file numbers --language lua --kind module
-rivet file report --language lua --kind script
-```
-
-Use `--kind library` for a library, or `--kind plugin --runtime neovim` for a plugin. `--runtime luajit` selects LuaJIT for an application or library. The CLI itself can use a different interpreter via `RIVET_LUA=luajit`; that launcher setting does not change the generated project's recorded runtime.
-
-## Document and update the project
-
-Keep examples and module APIs in your project's documentation. For a Neovim plugin, the generated `doc/<name>.txt` is a native help file; generate help tags with `:helptags` for its `doc` directory after editing it.
-
-[Doxygen documentation](/docs/doxygen/) explains the shared documentation workflow. Doxygen does not parse Lua directly: Lua needs a separately configured external filter or adapter. Rivet does not bundle or enable a Lua adapter. Native Neovim help and a README are useful starting points while you choose that integration.
-
-After updating Rivet, restart Neovim and review `:RivetUpgrade` to update supplementary templates. It preserves locally edited files and source implementations; inspect its notes before applying. See [Project upgrades](/docs/upgrading/).
-
-For Lua scripts in C, C++, or Rust, see [Lua projects and embedding](/docs/lua/). The files-only choice adds no host runtime dependency; the embedded example exposes separate host source, build, and dependency changes for review.
+You have added a Lua module, checked its syntax, and tested its results. Continue with [Lua projects and embedding](/docs/lua/) for libraries, Neovim plugins, other runtimes, and host-language integration.

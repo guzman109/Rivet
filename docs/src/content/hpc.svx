@@ -1,25 +1,23 @@
 ---
 title: Parallel computing and CUDA
-description: Correctness-first CPU, OpenMP, MPI, and CUDA starters with explicit toolchain and runtime choices.
-section: Guides
-order: 17
-updated: '2026-10-09'
+description: CPU, OpenMP, MPI, and CUDA profile requirements, toolchain settings, and runtime tests.
+section: Reference
+order: 14
+updated: '2026-10-14'
 ---
 
-Choose a workload profile in `:RivetNew`. Each profile adds a dedicated executable and a correctness test alongside the ordinary core library/test. Select the profile executable with `:RivetRunTarget`; the original application remains available.
+C++ workload profiles add an executable named `<name>_<profile>` and a correctness test named `<name>_<profile>_runtime`. They retain the ordinary core and its test. The common creation workflow is covered in [Your first C++ project](/docs/first-project/).
 
-After [loading Rivet](/docs/start-here/), open a new folder in Neovim, run `:RivetNew`, select `cpp`, your destination and Git/header choices, then the host C++ standard and workload. For these first-run examples, choose **Application + reusable core**, **Headers and source files**, standard-library headers, and Ninja. Review with `c`, select the preset with `:RivetPreset`, then Configure, select the workload executable, Run, and Test. The commands below are optional CLI equivalents.
+## Profiles
 
-| Profile | Starter | Requirement |
+| Profile | Starter | Build/runtime requirement |
 | --- | --- | --- |
-| `cpu` | `std::thread` partitions an uneven array, joins, and checks every result | C++17+, CMake Threads |
-| `openmp` | Parallel reduction checked against a serial closed-form result | OpenMP compiler/runtime |
-| `mpi` | All-reduce checked against the expected result for the actual rank count | MPI C API usable from C++, launcher |
-| `cuda` | Vector-add kernel, bounds check, CUDA error checks, host readback | CUDA toolkit, supported host compiler, NVIDIA GPU for runtime |
+| `cpu` | `std::thread` partitions an uneven array, joins, and checks every result | CMake Threads |
+| `openmp` | Parallel reduction checked against a closed-form result | Compatible OpenMP compiler/runtime |
+| `mpi` | All-reduce checked against the actual rank count | MPI C API usable from C++, MPI launcher |
+| `cuda` | Bounds-checked vector addition with CUDA error checks and host readback | CUDA toolkit, supported host compiler, NVIDIA GPU for runtime |
 
-## First parallel CPU run
-
-The CPU profile needs no separate parallel runtime installation:
+Profile selection is independent of the host C++ standard and named modules. For example:
 
 ```sh
 rivet new cpu_demo --standard 20 --modules false --profile cpu
@@ -27,17 +25,13 @@ rivet run --root cpu_demo --target cpu_demo_cpu
 rivet test --root cpu_demo
 ```
 
-Run prints `CPU correctness passed with N workers`, where this starter chooses between one and four workers. CTest should pass its core and runtime tests. The correctness check covers uneven partition sizes and joins all workers before checking the output. It is a correctness example, not a performance benchmark.
+In Neovim, `:RivetRunTarget` selects the workload executable. The CPU example uses one to four workers and prints `CPU correctness passed with N workers` on success.
 
-## First OpenMP run
+## OpenMP toolchain
 
-Install/select a compiler and matching OpenMP runtime before configuring:
+The generated build uses `find_package(OpenMP REQUIRED COMPONENTS CXX)` and links `OpenMP::OpenMP_CXX`. The compiler must support OpenMP and locate a compatible runtime; an SDK prefix alone cannot add compiler support. [CMake's OpenMP reference](https://cmake.org/cmake/help/latest/module/FindOpenMP.html) describes discovery variables.
 
-```sh
-rivet new parallel_demo --standard 20 --modules false --profile openmp
-```
-
-For a custom installation, add the following to `parallel_demo/CMakeUserPresets.json`, replacing the paths. If local presets already exist, merge this entry into `configurePresets` instead of replacing the file:
+A local preset can select an installation. Merge this entry into `CMakeUserPresets.json` and replace the paths:
 
 ```json
 {
@@ -54,34 +48,20 @@ For a custom installation, add the following to `parallel_demo/CMakeUserPresets.
 }
 ```
 
-Use the compiler paired with that runtime; a prefix cannot make an incompatible compiler support OpenMP. On macOS, a separately installed LLVM compiler and matching `libomp` are a common setup. If the compiler already finds its runtime, the prefix can be omitted.
+OpenMP Run prints `OpenMP correctness passed; max threads = N`. Its CTest sets `OMP_NUM_THREADS=2` independently of interactive Run settings.
 
-```sh
-rivet configure --root parallel_demo --preset parallel-debug
-rivet run --root parallel_demo --preset parallel-debug --target parallel_demo_openmp
-rivet test --root parallel_demo --preset parallel-debug
-```
+## MPI toolchain and launcher
 
-Run prints `OpenMP correctness passed; max threads = N`. CTest sets two threads for its runtime test and should pass both tests. Missing `OpenMP_CXX` at configure time means compiler/runtime discovery failed; inspect that selected compiler and runtime instead of treating it as a source error.
+The build uses `find_package(MPI REQUIRED COMPONENTS CXX)` and links `MPI::MPI_CXX`. `CXX` means the MPI C API usable from C++; it is distinct from the removed MPI C++ bindings. [CMake's MPI reference](https://cmake.org/cmake/help/latest/module/FindMPI.html) documents that distinction and wrapper discovery.
 
-The editor and CLI preserve C++26 as the general default. C++20 is an explicit portability choice in these examples. C++17/20/23/26 and modules remain independent of the workload profile.
-
-## Select the actual toolchain
-
-Choose the C++ compiler or an MPI wrapper in the wizard. Local compiler paths belong in `CMakeUserPresets.json`. `find_package(OpenMP)` and `find_package(MPI COMPONENTS CXX)` resolve the selected toolchain's runtime and imported targets. MPI's `CXX` component means the C API from C++; the removed MPI C++ bindings are not used. [CMake OpenMP](https://cmake.org/cmake/help/latest/module/FindOpenMP.html), [CMake MPI](https://cmake.org/cmake/help/latest/module/FindMPI.html).
-
-Doctor reports relevant configured flags/wrapper and compiler information. Before the first configure, those cache entries may not exist. Its report does not execute an OpenMP region or an MPI job.
-
-## First MPI run
-
-Use an MPI installation and launcher appropriate to your machine or cluster. The following selects its C++ wrapper explicitly:
+An MPI wrapper can be selected at creation:
 
 ```sh
 rivet new mpi_demo --standard 20 --modules false --profile mpi \
   --compiler /path/to/mpi/bin/mpicxx
 ```
 
-For an interactive four-rank run, create `mpi_demo/.rivet.local.json` (or enter it with `:RivetRunOptions`):
+A four-rank interactive run uses these `.rivet.local.json` options:
 
 ```json
 {
@@ -90,73 +70,32 @@ For an interactive four-rank run, create `mpi_demo/.rivet.local.json` (or enter 
 }
 ```
 
-```sh
-rivet configure --root mpi_demo
-rivet run --root mpi_demo --target mpi_demo_mpi
-rivet test --root mpi_demo
-```
+The launcher must match the MPI installation. Run prints `MPI ranks: 4, reduction: 10` for four ranks. CTest uses its discovered MPI launcher with two ranks and expects reduction 3. Cluster runs need an existing allocation and the site's launcher.
 
-Use the launcher from the same MPI installation. Run should print `MPI ranks: 4, reduction: 10`. CTest uses two ranks independently and expects reduction 3. On a cluster, run in an allocation and substitute the site-approved launcher; Rivet does not obtain resources automatically. MPI runtime execution remains unverified in the recorded local macOS environment.
-
-## Keep CUDA's standard separate
+## CUDA standard and architectures
 
 ```sh
-rivet new vector_demo --standard 26 --modules false --profile cuda \
+rivet new vector_demo --standard 23 --modules false --profile cuda \
   --cuda-standard 20 --cuda-architectures '80;90'
 ```
 
-Host C++ targets request C++26; the `.cu` target requests CUDA C++20 with `CUDA_STANDARD_REQUIRED YES`. Choices are CUDA 17, 20, or 23. NVCC 13.4 documents support through C++23; a C++26 host project does not grant CUDA C++26 support. [NVCC language modes](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html).
+`--standard` applies to host C++ targets. `--cuda-standard` applies to `.cu` files, accepts 17, 20, or 23, and defaults to 20. The CUDA target sets `CUDA_STANDARD_REQUIRED YES` and disables extensions. Select modes supported by the installed NVCC and host compiler; consult the [NVCC compiler reference](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html).
 
-The architecture choice is visible in the wizard. `native` is convenient on a machine with the intended GPU; use explicit architecture numbers for a cluster, cross build, or GPU-less build host. Set `CMAKE_CUDA_COMPILER` and, when needed, `CMAKE_CUDA_HOST_COMPILER` in a fresh local preset. Check the CUDA release's host compiler requirements before reusing a compiler selected for ordinary C++ targets.
+`--cuda-architectures` defaults to `native`. It also accepts `all`, `all-major`, or semicolon-separated architecture numbers with optional `-real`/`-virtual` suffixes. Explicit architectures are useful for GPU-less build hosts or deployment to different GPUs; the CUDA toolchain must support the selected values. [CMake's architecture reference](https://cmake.org/cmake/help/latest/prop_tgt/CUDA_ARCHITECTURES.html) defines these forms.
 
-For example, add this preset in `vector_demo/CMakeUserPresets.json`. Replace the three compiler paths with the host C++26 compiler, NVCC, and an NVCC-supported host compiler respectively; they need not be the same C++ installation:
+Local preset cache variables select `CMAKE_CUDA_COMPILER` and, when needed, `CMAKE_CUDA_HOST_COMPILER`. The latter can differ from `CMAKE_CXX_COMPILER`. Use a fresh build directory when changing compilers.
 
-```json
-{
-  "version": 6,
-  "configurePresets": [{
-    "name": "cuda-debug",
-    "inherits": "debug",
-    "binaryDir": "${sourceDir}/build/cuda-debug",
-    "cacheVariables": {
-      "CMAKE_CXX_COMPILER": "/path/to/cxx26-compiler",
-      "CMAKE_CUDA_COMPILER": "/path/to/cuda/bin/nvcc",
-      "CMAKE_CUDA_HOST_COMPILER": "/path/to/nvcc-supported-cxx"
-    }
-  }]
-}
-```
+CUDA Run prints `CUDA correctness passed` after checking every output element. If device discovery fails or reports zero devices, the executable returns 77 and CTest skips it. Compilation and execution need verification on a compatible CUDA host.
 
-```sh
-rivet configure --root vector_demo --preset cuda-debug
-rivet run --root vector_demo --preset cuda-debug --target vector_demo_cuda
-rivet test --root vector_demo --preset cuda-debug
-```
+## Resource options and test results
 
-On a compatible NVIDIA host, Run should print `CUDA correctness passed`, and CTest should pass the core and `vector_demo_cuda_runtime` tests. An unsupported host compiler or architecture is a configure/build failure. No available device produces exit 77 from the executable and a skipped CTest. CUDA compilation and runtime still require verification on an NVIDIA-equipped host; the recorded local environment covers generation and validation only.
+| Local option | Effect |
+| --- | --- |
+| `jobs` | Build parallelism |
+| `threads` | `OMP_NUM_THREADS` for the run |
+| `ranks` | Value substituted into an explicit launcher |
+| `gpus` | Value available to scheduler/launcher hooks |
 
-## Jobs, ranks, threads, and GPUs
+These settings do not allocate cluster resources. [Task options](/docs/task-options/) covers launchers, benchmarks, profilers, and scheduler commands.
 
-These are four different controls. [Local task options](/docs/task-options/) keep them separate:
-
-```json
-{
-  "jobs": 8,
-  "ranks": 4,
-  "threads": 2,
-  "gpus": 1,
-  "launcher": ["mpiexec", "-n", "{ranks}"],
-  "args": [],
-  "env": {}
-}
-```
-
-`jobs` controls build parallelism; `threads` sets `OMP_NUM_THREADS`; `ranks` is substituted into an explicit launcher. `gpus` is a hook parameter for a scheduler or launcher, not automatic GPU allocation. The MPI CTest uses two ranks; OpenMP's CTest sets two threads independently of your interactive Run settings.
-
-## Tests, profiling, and clusters
-
-Profile correctness tests carry `runtime` and profile labels. The CUDA executable returns 77 when no device is available, which CTest reports as skipped. CTest itself may exit 0 even with that skip. Inspect the named runtime test; successful compilation or a passing core test does not establish GPU correctness.
-
-CPU and OpenMP tests were executed locally on macOS. CUDA and MPI generation/validation are covered, but their runtime checks still need NVIDIA/MPI hosts. Keep those jobs in your own CI or cluster qualification process.
-
-Benchmark, profiler, and Slurm commands are explicit argv hooks. They run only when you select that task; Rivet does not submit jobs, poll a cluster, or cancel jobs in the background. See [Task options](/docs/task-options/) for examples and job IDs.
+Profile tests have `runtime` and profile labels, a 60-second timeout, and skip return code 77. CTest can report overall success when a runtime test was skipped; inspect that test's result. Doctor reports toolchain information without executing parallel work. See [Compatibility](/docs/compatibility/) for verification scope.

@@ -1,77 +1,51 @@
 ---
 title: Compatibility
-description: Supported C++ modes, tested toolchain combinations, and current boundaries.
+description: Platform and tool requirements, C++ language modes, and automated test coverage.
 section: Reference
-order: 24
-updated: '2026-10-13'
+order: 16
+updated: '2026-10-14'
 ---
 
-Rivet bundles C++, C, Python, Rust, SwiftPM, and Lua providers. The editor requires Neovim 0.11 or newer. The optional CLI uses Lua or LuaJIT; the process and filesystem adapter targets macOS and Linux.
+Rivet provides C++, C, Python, Rust, SwiftPM, and Lua project templates and tasks. Its process and filesystem adapters target macOS and Linux. The plugin requires Neovim 0.11+; installation with `vim.pack` requires Neovim 0.12+. The optional CLI requires Lua 5.1+ or LuaJIT.
 
-## Language modes
+## C++ modes
 
 | Choice | Project interfaces | Standard library |
 | --- | --- | --- |
 | C++17 | Headers and source files | Headers |
 | C++20 | Headers, single-file modules, or split modules | Headers |
-| C++23 | Headers, single-file modules, or split modules | Headers, or opt-in `import std` with a supported toolchain |
-| C++26 | Headers, single-file modules, or split modules | Headers, or opt-in `import std` with a supported toolchain |
+| C++23 / C++26 | Headers, single-file modules, or split modules | Headers, or opt-in `import std` |
 
-C++26 remains the default. Rivet sets `CXX_STANDARD_REQUIRED YES` and disables language extensions; it does not silently lower the standard. Accepting a language mode does not establish support for every feature of that edition. C++11 and C++14 are not offered yet.
+C++26 is the default. Generated targets require the selected standard and disable compiler extensions. Accepting a standard flag does not establish support for every feature of that edition. C++11 and C++14 are not offered.
 
-A new C++17 project defaults to headers. Requesting modules explicitly with C++17, or `import std` with C++20, is rejected before creation. Existing manifests without `module_layout` retain the split arrangement; no source migration is performed.
+Named modules require C++20 or later; `import std` requires C++23 or later. These are independent options. A C++17 project defaults to headers. Existing manifests without `module_layout` retain the split layout. See [modules and headers](/docs/modules/) for option defaults and syntax.
 
-## Tested combinations
+## C/C++ toolchain requirements
 
-The local integration suite exercises generated projects with Homebrew LLVM 23.1.2, CMake 4.4.4, and Ninja on macOS:
-
-- Headers build and pass CTest in C++17/20/23/26.
-- Named modules build and pass CTest in C++20/23/26, with both single-file and split starters.
-- C++23 `import std` is exercised with a single-file module; the C++26 cases cover project headers and named modules.
-- Custom preset includes, conditions, environments, local cache overrides, executable artifact discovery, and clangd database selection have integration coverage.
-
-Lua 5.5 and LuaJIT exercise the shared model; Neovim tests cover wizard navigation, review/cancellation, headers, remembered tasks, and asynchronous diagnostics. Linux was also tested in an Ubuntu 26.04.1 ARM64 container with Lua 5.4.8, LuaJIT, Neovim 0.11.6, LLVM/libc++ 21.1.8, Ninja, and CMake 4.4.4. That run covers headers in C++17/20/23/26, named modules in C++20/23/26, and C++23/26 `import std`, including reconfiguration and added sources. Other distributions, compiler combinations, and Linux GPU runtimes still need their own validation.
-
-CI repeats the Lua, Neovim, and integration suites on macOS with Homebrew LLVM and on Ubuntu with LLVM/libc++ 21. GCC is not exercised: generated projects may build with it in header mode, but named modules and `import std` with GCC are untested and unsupported for now.
-
-## Toolchain requirements
-
-Generated C/C++ projects require CMake 3.30 or newer. Module creation uses Ninja and requires compatible compiler dependency scanning; Ninja must be 1.11 or newer. Conventional headers can also use Unix Makefiles.
-
-`import std` has additional restrictions: Rivet's experimental CMake gate is verified for **4.4.0 through 4.4.4**, and the compiler/library must advertise the selected 23 or 26 mode. This gate is version-specific. The [module guide](/docs/modules/) explains metadata discovery and editor setup.
-
-CMake evaluates custom preset validity and conditions. Rivet requires an explicit build directory inside the project and rejects symlink paths and in-source builds. Native build/test settings are respected. Multi-config executable runs require a build preset that identifies the configuration. Standalone CMake remains available for workflows outside these bounds.
-
-## Moving to Linux
-
-Install Neovim 0.11+ and the tools for the languages you use. The plugin uses Neovim's bundled Lua; the optional CLI additionally needs Lua or LuaJIT. Ubuntu's LLVM tooling is split into compiler, scanner, formatter, and language-server packages, so check for `clang++`, `clang-scan-deps`, `clang-format`, and `clangd` independently. Run `:RivetDoctor` in each actual project.
-
-For Clang `import std`, use matching libc++ and libc++abi development packages and select libc++ explicitly in your local configure preset with `CMAKE_CXX_FLAGS: "-stdlib=libc++"`. The tested Ubuntu combination used the 21-series packages. It also required CMake 4.4.4 instead of Ubuntu's packaged CMake 4.2.3. Conventional headers and named project modules do not require that import-std gate or a switch to libc++.
-
-Projects stay portable by keeping machine-specific compiler and SDK paths in `CMakeUserPresets.json` and `.rivet.local.json`. Recreate those local choices on Linux instead of copying macOS Homebrew paths. Metal and Xcode workflows remain macOS-specific; use Vulkan, OpenGL, or a suitable WebGPU backend on Linux. Linux SwiftPM does not supply Apple's SwiftUI or Metal frameworks.
-
-## Additional local verification
-
-| Workflow | Local result |
+| Workflow | Requirements enforced by the generated project |
 | --- | --- |
-| C17, mixed C/C++ | Build/run/CTest and ABI header coverage |
-| CPU / OpenMP | Compiled and executed correctness tests |
-| MPI / CUDA | Generation and option validation covered; runtime unverified without MPI/NVIDIA tooling |
-| Metal-cpp | Compiled MSL and C++; GPU render/readback passed |
-| Native WebGPU / Dawn | Compiled C++/WGSL; GPU render/readback passed |
-| OpenGL / GLFW 3.4 | Compiled, loaded core functions, rendered and checked a pixel |
-| Vulkan | C++17 syntax check against Khronos headers; full SDK and runtime unverified |
-| Python | Package/CLI creation, source checks, run, tests, environment selection |
-| Cargo 1.98.1 | App/library/workspace, check/build/test/run/fmt/Clippy, extra binary |
-| Apple Swift 6.4 | App/library, build/run/test, format/lint, source addition |
-| Lua / LuaJIT / Neovim | Lua app checks/run/tests, libraries, plugin tests, modules and scripts; optional tools are checked separately |
+| Conventional headers | CMake 3.30+ and a compiler supporting the selected standard; Ninja or Unix Makefiles |
+| Named C++ modules | CMake 3.30+, Ninja 1.11+, and compatible compiler dependency scanning |
+| `import std` | CMake **4.4.0–4.4.4**, Ninja 1.11+, and a compiler/standard-library combination that advertises the selected C++23 or C++26 import mode |
 
-SDKs used for validation live in temporary directories; project creation does not download them. The [graphics guide](/docs/graphics/) identifies tested Metal-cpp and Dawn revisions. Missing GPU/context returns 77 and is reported as a skipped CTest, not a passing hardware test.
+The `import std` range is Rivet's version-specific experimental gate, not a claim about what other CMake releases can support. Toolchain metadata must belong to the selected compiler and standard library. [Module troubleshooting](/docs/troubleshooting/#standard-library-modules-are-rejected) covers missing metadata and rejected versions.
 
-## Current boundaries
+Rivet's CMake task adapter requires an explicit build directory inside the project and rejects symlink paths and in-source builds. Multi-config runs require a build preset identifying the configuration. See [CMake reference](/docs/cmake/).
 
-Existing CMake, Python, Cargo, SwiftPM, and configured Lua projects can run native tasks without a Rivet manifest. Generic file creation also preserves native ownership. File moves/removals operate on registered C/C++ files and recorded foreign-language files; explicit module renames apply to C++ modules. C++ identifier/include refactoring and adopting arbitrary CMake source lists remain separate work.
+## Automated coverage
 
-Python's Build task checks syntax; Package builds a distribution through installed packaging tools. Lua's Check and Build validate syntax without executing source bodies; Test and Run execute code in the selected runtime. Native package managers own dependencies and lockfiles. SwiftUI apps, signing, simulators, and previews remain in Xcode. WebGPU support is native; browser deployment is not generated.
+The repository's [Checks workflow](https://github.com/guzman109/Rivet/blob/main/.github/workflows/ci.yml) defines macOS and Ubuntu jobs. Both run Lua, LuaJIT, Neovim, and CMake integration suites. CMake is pinned to 4.4.4; macOS installs Homebrew LLVM, while the Ubuntu 26.04 container installs Clang and libc++ 21 development packages.
 
-Cluster/profiler integration is an explicit argv-hook interface. There is no background job monitor, resource allocator, or automatic remote deployment.
+The [integration suite](https://github.com/guzman109/Rivet/blob/main/tests/integration.lua) exercises headers in C++17/20/23/26, both named-module layouts in C++20/23/26, and selected C++23/26 `import std` combinations. It also covers preset selection, compilation databases, generated-file protection, and executable discovery. These are test definitions; support for a particular checkout and environment depends on its run results.
+
+GCC is not exercised by that CI configuration. Rivet's current module workflow is validated around Clang; GCC modules and `import std` are outside its tested combinations.
+
+Additional checks in [tests/batches.lua](https://github.com/guzman109/Rivet/blob/main/tests/batches.lua) cover C, Python, Cargo, SwiftPM, OpenMP, and optional graphics SDKs. The standard CI workflow does not run that entire suite: its Linux job selects the native Python case. GPU tests require their SDKs and a usable device/context. MPI and CUDA checks cover generation; Vulkan has a header compilation check. These do not establish working MPI, CUDA, or Vulkan runtimes.
+
+## Other providers and workloads
+
+See [C](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), and [Lua](/docs/lua/) for provider-specific tools and tasks. Native package managers own dependencies and lockfiles.
+
+[Graphics starters](/docs/graphics/) need separately installed SDKs. Metal and Xcode workflows require macOS. SwiftUI, signing, simulators, and previews remain Xcode workflows. WebGPU support targets native Dawn applications; browser deployment is not generated.
+
+[HPC hooks](/docs/hpc/) invoke explicit commands for profiling or scheduling. Rivet does not supply a cluster allocator, background job monitor, or remote deployment service.

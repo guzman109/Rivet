@@ -1,0 +1,27 @@
+---
+title: Doctor checks
+description: Diagnostic coverage, report levels, and limits of toolchain checks.
+section: Reference
+order: 17
+updated: '2026-10-14'
+---
+
+`RivetDoctor` inspects the current project's tools and configuration. The CLI equivalent is `rivet doctor --root PATH`. Warnings identify missing optional tools or incomplete configuration; errors produce a nonzero CLI status. Doctor does not install tools or run the application's tests.
+
+## Coverage
+
+| Provider or profile | Checks | Still verify by running the workflow |
+| --- | --- | --- |
+| C++ | Selected preset/compiler, scanner and module requirements, compilation database and clangd settings | Actual feature support, linking, tests, runtime behavior |
+| C | Configured compiler from CMake File API; warns before a reply is available | Compiler standard support and actual build/test |
+| Python | Selected interpreter/environment, Python 3.11+, Ruff, packaging `build` for ordinary Python, selected pytest, uv where applicable | Imports, dependency compatibility, package creation, test results |
+| Rust | Cargo availability, rustfmt/Clippy commands, native target metadata | Successful compilation, lint, tests, runtime |
+| Swift | Swift availability, `swift format`, native target metadata | Package compilation, tests, Apple app integration |
+| Lua | Selected runtime/version and optional StyLua/Luacheck availability | Syntax, module loading, assertions, application or plugin behavior |
+| OpenMP / MPI / CUDA | Relevant configured CMake compiler/runtime settings | Working runtimes, rank/thread behavior, NVCC host compatibility, actual devices |
+| Metal | macOS, Xcode Metal compiler, configured header path | Shader compilation and GPU pixel check |
+| Dawn / Vulkan / OpenGL | Configured SDK/loader/GLFW locations; explains runtime prerequisites | Vulkan shader tools and validation layers, working device/context, actual rendering |
+
+Some checks require CMake cache or File API data from a prior configure. Native package metadata discovery can evaluate `Package.swift` through SwiftPM. A clean report establishes only the checks listed here; Build, Test, and hardware runs provide separate evidence.
+
+For corrective steps, see [troubleshooting](/docs/troubleshooting/).

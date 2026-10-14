@@ -1,21 +1,20 @@
 ---
-title: Existing projects and file changes
-description: Discover native projects, run their tools, and review changes to Rivet-owned source lists.
-section: Guides
-order: 16
-updated: '2026-10-13'
+title: Work with existing projects and files
+description: Run native project tasks, add files, and review registered file changes.
+section: How-to guides
+order: 3
+updated: '2026-10-14'
 ---
 
-Open a file inside a CMake, Python, Cargo, SwiftPM, or configured Lua project and run `:RivetTask`. Rivet recognizes `CMakeLists.txt`, `pyproject.toml`, `Cargo.toml`, `Package.swift`, and Lua configuration markers `.luarc.json`, `.luacheckrc`, or `.stylua.toml`. For CMake it searches past nested source-list fragments for a project declaration or presets; an independently declared nested project can be selected as its own root. `--root PATH` explicitly chooses a CLI root. Discovery writes no manifest and does not claim ownership of existing source lists.
+Use an existing project with Rivet by opening a file inside it and running `:RivetTask`. Install the project's native tools first. Discovery recognizes CMake, Python, Cargo, SwiftPM, and configured Lua projects; it creates no `.rivet.json`. The [project model](/docs/project-model/) explains which operations require that manifest.
 
-## Work in an existing CMake project
+## Build and run an existing CMake project
 
-1. Run `:RivetTask configure`. Select an available native configure preset. Without preset files, Rivet offers Debug and Release under `build/rivet/debug` and `build/rivet/release`, using Ninja.
-2. Run `:RivetBuildTarget` to select a target discovered through CMake's File API.
-3. Run `:RivetTask build` or `:RivetTask test`. Native build/test presets remain authoritative when present.
-4. Run `:RivetRunTarget` to select a configured executable. Run resolves its real artifact, including a custom output name or directory.
+1. Run `:RivetTask configure` and choose a configure preset. Without preset files, Rivet offers Debug and Release with Ninja under `build/rivet/debug` and `build/rivet/release`.
+2. Run `:RivetBuildTarget` to select a target discovered through CMake's File API, then `:RivetTask build` or `:RivetTask test`.
+3. Run `:RivetRunTarget` to select an executable, then `:RivetTask run`. Rivet resolves the configured artifact, including custom output names and directories.
 
-Running an external CMake application before its first configure starts configuration to discover targets. `rivet run --root .` configures, discovers, builds, and runs when there is one executable. With several, choose a target; an unknown target is rejected after discovery. Explicit CLI target names also work:
+The CLI equivalent is:
 
 ```sh
 rivet configure --root .
@@ -23,23 +22,36 @@ rivet targets --root .
 rivet run --root . --target viewer
 ```
 
-CMake scripts execute during configuration as they normally do. Rivet writes its File API query in the selected build directory and a compilation-database copy in `.cache/rivet`. It preserves custom `.clangd` files; point `CompilationDatabase` at `.cache/rivet` to follow the selected build. See [CMake and tasks](/docs/cmake/).
+Replace `viewer` with a listed executable. A fresh project's `rivet run --root .` configures, discovers, builds, and runs automatically when there is one executable. Choose a target when there are several.
 
-A multi-config project needs a build preset with a configuration. Build directories and executable artifacts must be inside the project; symlink paths and in-source builds are rejected. Create native presets before using the cache override editor on a project without presets.
+Native build/test presets control the task when present. A multi-config project needs a selected configuration, typically from its build preset. Build directories and executable artifacts must stay inside the project; in-source builds and symlink paths are rejected. To use cache overrides in a project without presets, create native presets first. See [CMake and tasks](/docs/cmake/).
 
-## Create files without adopting a build
+Configuration executes the project's CMake scripts, writes a File API query in the build directory, and copies the compilation database to `.cache/rivet`. For a custom `.clangd`, set `CompileFlags.CompilationDatabase` to `.cache/rivet` to follow the selected build.
 
-`:RivetFile` can create source files in an existing project or an ordinary folder. Select the language and review the paths; the operation preserves the native build configuration and creates no Rivet manifest. Register or import those files through the project's native workflow. In an ordinary folder, the CLI needs an explicit root:
+## Run other native projects
+
+Open a file under the native project root and choose a task with `:RivetTask`. Recognized markers are `pyproject.toml`, `Cargo.toml`, `Package.swift`, `.luarc.json`, `.luacheckrc`, and `.stylua.toml`. Use `--root PATH` to select a CLI root explicitly.
+
+Follow the [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), or [Lua](/docs/lua/) reference for task requirements. Native tools retain their normal dependency and lockfile behavior.
+
+For external Lua projects, syntax checks discover `.lua` files under the root. Run expects `main.lua`; Test expects `tests/test.lua`. The runtime defaults to ordinary Lua. A local executable override must accept Lua-style invocation; use a generated Lua project for a recorded Neovim runtime and plugin tests.
+
+## Add files without adopting the build
+
+Run `:RivetFile`, select the language/template, and review the paths. Apply with `c`, then register or import the new files through your native build workflow. The operation leaves build registration to you and creates no Rivet manifest.
+
+In an ordinary folder without a project marker, give the CLI an explicit root:
 
 ```sh
 rivet file scripts/prepare.lua --language lua --kind script --root . --preview
+rivet file scripts/prepare.lua --language lua --kind script --root .
 ```
 
-External Lua tasks discover `.lua` files beneath the selected root for syntax checks. Run is available for `main.lua`, and Test expects `tests/test.lua`. These external projects default to the `lua` runtime; an executable override in `.rivet.local.json` must be compatible with ordinary Lua invocation. Use a Rivet-owned Lua project when you need the recorded Neovim runtime and plugin test workflow. See [Lua projects](/docs/lua/).
+## Move or remove a registered file
 
-## Review a move or removal
+This operation supports C/C++ target files and supplemental files in another language recorded in `.rivet.json`. Use native tools to move or remove a Python, Rust, Swift, or Lua project's own source files. Run `:RivetFiles` and choose a project-relative move, rename, or removal. Inspect the source and manifest changes; for C/C++, also inspect regenerated source lists. Press `c` to apply or `q` to cancel.
 
-For files registered in `.rivet.json`, `:RivetFiles` offers a project-relative move/rename or removal. The review shows deleted files, new contents, the manifest change, and regenerated CMake source lists. `q` cancels; `c` applies.
+For example, after registering `src/core/extra.cpp`:
 
 ```sh
 rivet move src/core/extra.cpp src/core/detail.cpp --preview
@@ -47,22 +59,16 @@ rivet move src/core/extra.cpp src/core/detail.cpp
 rivet remove src/core/detail.cpp --preview
 ```
 
-File moves preserve bytes and module identity. Update affected `#include` paths and C++ identifiers explicitly; this is not a C++ semantic refactoring engine. Keep the extension, and avoid leaving a target without a compiled source. Removing an imported or implemented module is refused until its registered references have been addressed.
+Omit `--preview` on the last command to remove the file. Keep the extension when moving. Moves preserve bytes and module identity, so update affected `#include` paths and identifiers yourself. Avoid leaving a target without a compiled source; removing a referenced module is refused.
 
-The apply step checks the preview snapshots again and refuses changed files, symlinks, destination collisions, and unsaved Neovim buffers. Failed writes roll back committed file contents. After applying in Neovim, open buffers follow moved paths, removed-file buffers close, and clean buffers for rewritten files refresh. Saving a moved buffer writes to its new path. Files are removed only after the review is applied.
+Save affected Neovim buffers before applying. Rivet rechecks the reviewed snapshots, refuses collisions or changed files, and rolls back committed contents if a write fails. After applying, open buffers follow moved paths, removed-file buffers close, and clean buffers for rewritten files refresh. Build and test afterward.
 
-## Rename a module's identity
+## Rename a C++ module's identity
 
-Use `:RivetModuleRename` separately from a filename move. It previews module declarations, implementation declarations, and imports in registered project files, plus the manifest mapping.
+Run `:RivetModuleRename`, or preview a CLI rename:
 
 ```sh
 rivet module-rename simulation.core simulation.work --preview
 ```
 
-The conservative token scan skips comments and string literals. It handles direct named declarations/imports; it is not a compiler-based refactor across dependencies, macro-generated code, partitions, or unregistered files. Inspect the diff, apply, then build and test.
-
-## Ownership stays explicit
-
-Registered file-list mutations require a Rivet manifest. They do not adopt arbitrary existing CMake source lists. C/C++ source operations and recorded foreign-language moves/removals preserve that ownership boundary. Python, Cargo, and SwiftPM tasks preserve native manifests and lockfiles; use their native tools for dependency changes. See the [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), and [Lua](/docs/lua/) guides.
-
-Automatic source-list adoption is a separate future migration workflow. Existing-project build support does not imply that migration has happened.
+Inspect declarations and imports, then repeat without `--preview` to apply. This updates direct named-module declarations, implementation declarations, and imports in registered project files. The scan skips comments and string literals; handle dependencies, macros, partitions, and unregistered files yourself. Build and test after the rename.

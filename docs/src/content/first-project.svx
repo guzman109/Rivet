@@ -1,18 +1,18 @@
 ---
 title: Your first C++ project
-description: Create a project in Neovim, personalize its headers, add a module, and build, run, and test it.
-section: Start here
-order: 3
-updated: '2026-10-13'
+description: Create a C++ application, add a named module, and build, run, and test it in Neovim.
+section: Tutorials
+order: 1
+updated: '2026-10-14'
 ---
 
-This C++26 walkthrough creates an application named `engine`, adds a small single-file module, and uses a compiler error to try the quickfix workflow. The result is an ordinary CMake project you can keep editing afterward. For another language, start with [installation and language selection](/docs/start-here/#choose-your-first-project).
+Create a C++ application named `engine`, add a named module, and use a compiler error to learn the quickfix workflow. By the end, the application will print `Answer: 42` and pass its CTest test.
 
 ## Load Rivet and check the tools
 
-Use Neovim 0.11 or newer and [install Rivet through your plugin manager](/docs/start-here/#install-in-neovim). Restart after changing the configuration. Run `:RivetDoctor` to check the CMake/compiler tools used by this project. This walkthrough needs CMake 3.30+, Ninja 1.11+, and a C++26 compiler with named-module dependency scanning. On macOS, select Homebrew LLVM `clang++` and its matching `clang-scan-deps`; `clang-format` is optional. See [tool requirements](/docs/getting-started/#check-the-tools) for details.
+Use Neovim 0.11 or newer and [install Rivet through your plugin manager](/docs/start-here/#install-in-neovim). Restart after changing the configuration. Run `:RivetDoctor` to check the CMake/compiler tools used by this project. This walkthrough needs CMake 3.30+, Ninja 1.11+, and a C++26 compiler with named-module dependency scanning. On macOS, select Homebrew LLVM `clang++` and its matching `clang-scan-deps`; `clang-format` is optional. See [tested toolchains](/docs/compatibility/) for details.
 
-## Create and personalize
+## Create the project
 
 In a parent directory of your choice, create a folder and open Neovim inside it:
 
@@ -24,32 +24,28 @@ nvim
 
 Run `:pwd` to confirm the destination, then `:RivetNew` and use these choices. If a saved-profile menu appears, select **New choices** first:
 
-| Prompt | Choice for this walkthrough |
-| --- | --- |
-| Language | `cpp` (C++) |
-| Create project in | Current folder |
-| Project name | `engine` (inferred from the folder, editable) |
-| Git repository | Initialize Git (reuse an existing repository), or Skip Git initialization |
-| Project license | No license yet, or your chosen license with its requested holder/year |
-| File comment headers | Personalize and preview styles, or No header |
-| C++ standard | C++26 |
-| Workload profile | General C++ |
-| Project kind | Application + reusable core |
-| C++ interface | Named modules |
-| Module files | Interface + implementation |
-| Standard library | Standard-library headers |
-| Project layout | Folder by feature |
-| Formatting style | LLVM |
-| Header protection | `#pragma once` |
-| C++ compiler | Your module-capable `clang++` executable |
+| Prompt               | Choice for this walkthrough                   |
+| -------------------- | --------------------------------------------- |
+| Language             | `cpp` (C++)                                   |
+| Create project in    | Current folder                                |
+| Project name         | `engine` (inferred from the folder, editable) |
+| Git repository       | Skip Git initialization                       |
+| Project license      | No license yet                                |
+| File comment headers | No header                                     |
+| C++ standard         | C++26                                         |
+| Workload profile     | General C++                                   |
+| Project kind         | Application + reusable core                   |
+| C++ interface        | Named modules                                 |
+| Module files         | Interface + implementation                    |
+| Standard library     | Standard-library headers                      |
+| Project layout       | Folder by feature                             |
+| Formatting style     | LLVM                                          |
+| Header protection    | `#pragma once`                                |
+| C++ compiler         | Your module-capable `clang++` executable      |
 
-If you personalize headers, enter the details you want included; every field is optional. Keep `today` to stamp the creation date of each new file. Leave copyright and license fields blank unless you have text to include. The next panel compares the styles using your answers. Choose **Xcode-style** to try the spaced file-and-project header. The [header guide](/docs/comment-headers/) covers editing it later.
-
-Ninja is selected automatically for named modules. The standard library still uses `#include`; `import std;` is a separate option and is not needed for this walkthrough.
+Ninja is selected automatically for named modules. This example uses `#include` for the standard library.
 
 Inspect the final file tree, Git action, and previews. Press `c` or Ctrl-S to create the project, or `q` to cancel. Everything is created directly in `engine`; no nested `engine/engine` folder is added. Enter selects options in ordinary pickers; the final review deliberately uses a separate apply key.
-
-A C++ `.gitignore` is generated even if you skip Git initialization. Existing ignore rules are preserved; unrelated files stay in place, and collisions with other generated files stop creation. If Git is selected, an existing repository is reused or a new one initialized, with no staging or commit.
 
 ## Build, run, and test the starter
 
@@ -70,13 +66,13 @@ Worker 0: [0, 4)
 
 Then run `:RivetTask test`. CTest runs `engine_test`; the starter should report one passing test. It checks the range-partitioning example and does not require an external test framework.
 
-Use `q` to close task output. Rivet remembers Debug for this project across editor restarts, so subsequent tasks reuse it. `:RivetPreset` changes that choice; `:RivetTask repeat` repeats your last task with the currently selected preset and application. With more than one application, `:RivetRunTarget` changes which one Run launches.
+Use `q` to close task output. Rivet remembers the preset; `:RivetPreset` changes it. Wait for each task to finish before starting the next.
 
 ## Add a single-file module
 
 Run `:RivetFile`, select **C++** in the language picker, choose **Module interface**, select the `engine_core` target, use the name `number`, and name the module `engine.number`. The review should add `src/core/number.cppm` and register it in the core target's `CXX_MODULES` file set. Approve with `c`.
 
-Open that file. Keep its optional comment header and replace the template below it with:
+Open `src/core/number.cppm` and replace its contents with:
 
 ```cpp
 export module engine.number;
@@ -88,9 +84,9 @@ constexpr int answer() {
 }
 ```
 
-This module includes both the exported declaration and the definition. It needs no separate `.cpp` implementation file. The generated core module uses a split interface and implementation to demonstrate that alternative; both arrangements are valid.
+The module contains its definition, so it needs no separate implementation file.
 
-Now open `app/main.cpp`. Keep its optional comment header and replace the code below it with:
+Replace `app/main.cpp` with:
 
 ```cpp
 #include <iostream>
@@ -106,7 +102,16 @@ int main() {
 }
 ```
 
-Save both files with `:wall`, then run `:RivetTask run`. You should see `Answer: 42` followed by the original worker range. Rivet builds saved files, so save your edits before starting a task.
+Save both files with `:wall`, then run `:RivetTask run`. You should see:
+
+```text
+Answer: 42
+Worker 0: [0, 4)
+```
+
+In `tests/core_test.cpp`, add `import engine.number;` alongside the existing import. At the start of `main`, add `if (engine::answer() != 42) { return 1; }`.
+
+Save and run `:RivetTask test`. The test should pass with the new check included. Rivet builds saved files, so save before starting each task.
 
 ## Follow a compiler error
 
@@ -114,16 +119,8 @@ In `app/main.cpp`, temporarily change `engine::answer()` to `engine::answr()`, s
 
 Run `:copen`. Rivet collects GCC/Clang-style file diagnostics while output streams. Select an entry and press Enter to jump to its file and location; `:cnext` and `:cprevious` move between entries. Relative compiler paths resolve from the build directory.
 
-Correct the typo, save, and run `:RivetTask repeat`. The build should succeed. Run `:RivetTask test` once more to check the original tests. A fresh workflow gets a fresh quickfix list, so old errors do not remain in the new result.
+Correct the typo, save, and run `:RivetTask repeat`. The build should succeed. Run `:RivetTask test` once more to check the project tests. A fresh workflow gets a fresh quickfix list, so old errors do not remain in the new result.
 
-## Make the next change
+## Next steps
 
-Use `:RivetHeader` to preview an edit to the current file's comment header, or `:RivetHeaderDefaults` to change the defaults for future files. `:RivetCMake` opens the selected build's cache options; [CMake and tasks](/docs/cmake/) explains the controls.
-
-For another component, use [Files and targets](/docs/templates/). Keep custom CMake logic in `CMakeLists.txt`; generated target and dependency fragments are maintained through Rivet's reviewed operations.
-
-## Document the API with Doxygen
-
-Choose **Doxygen documentation** while personalizing headers, or run `:RivetHeaderDefaults` before adding more files. The template picker shows a sample header; the final review shows the real filename and complete generated contents.
-
-Add `@brief`, `@param`, and `@return` comments to exported declarations in `core.cppm`. Generate HTML for readers and XML for a documentation application using the [Doxygen guide](/docs/doxygen/). This lets the API reference grow with your first project and carry the same Git/release identity.
+You have created, extended, and tested a C++ module. Use [Files and targets](/docs/templates/) for another component, [Modules and headers](/docs/modules/) for interface choices, or [Doxygen](/docs/doxygen/) to document the API.

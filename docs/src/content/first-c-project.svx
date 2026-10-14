@@ -1,16 +1,16 @@
 ---
 title: Your first C project
-description: Create a C17 application, add a source/header pair, run its tests, and publish API documentation with Doxygen.
-section: Start here
-order: 5
-updated: '2026-10-13'
+description: Create a C17 application, add a source/header pair, and build, run, and test it.
+section: Tutorials
+order: 2
+updated: '2026-10-14'
 ---
 
-Build a small application named `counter` with a reusable C library and a CTest test. Then add a function and document its public interface with Doxygen. Rivet creates an ordinary CMake project; you can keep using its files outside Neovim.
+Create a C17 application named `counter` with a reusable library. Add a function in a source/header pair, call it from the application, and verify it with CTest.
 
 ## Check your tools
 
-[Install Rivet](/docs/start-here/#install-in-neovim) in Neovim 0.11 or newer. This walkthrough needs CMake 3.30+, Ninja, and a C17 compiler available to CMake. Doxygen and clang-format are optional additions. After creating the project, `:RivetDoctor` checks its tools.
+[Install Rivet](/docs/start-here/#install-in-neovim) in Neovim 0.11 or newer. This walkthrough needs CMake 3.30+, Ninja, and a C17 compiler available to CMake. After creating the project, `:RivetDoctor` checks its tools.
 
 ## Create the project
 
@@ -29,17 +29,14 @@ Run `:RivetNew`. If you see a profile picker, choose **New choices**. Use these 
 | Project language     | `c`                                                                   |
 | Create project in    | Current folder                                                        |
 | Project name         | `counter`                                                             |
-| Git repository       | Skip Git initialization, or initialize/reuse a repository             |
-| Project license      | No license yet, or your chosen license with its requested holder/year |
-| File comment headers | Personalize and preview styles                                        |
-| Header style         | Doxygen documentation                                                 |
+| Git repository       | Skip Git initialization                                               |
+| Project license      | No license yet                                                        |
+| File comment headers | No header                                                             |
 | Project kind         | Application                                                           |
 | C standard           | C17                                                                   |
 | C header protection  | `#ifndef / #define`                                                   |
 
-Header identity fields are optional. **Doxygen documentation** creates file comments with Doxygen tags; add function comments as your API grows. The [header guide](/docs/comment-headers/) explains how to change this choice later.
-
-Review the files and press `c` or Ctrl-S to apply, or `q` to cancel. The project goes directly into `counter`, with no second nested directory. Creation checks for collisions before writing files. Selecting Git does not stage or commit them.
+Review the files and press `c` or Ctrl-S to apply, or `q` to cancel. The project goes directly into `counter`, with no second nested directory. Creation checks for collisions before writing files.
 
 The important files are `app/main.c`, `src/core.c`, `include/counter.h`, and `tests/core_test.c`. The `counter_core` static library supplies `rivet_add`; the `counter` application and `counter_test` executable link to it.
 
@@ -56,7 +53,7 @@ Choose **debug** when asked for a preset. Rivet configures CMake and builds the 
 42
 ```
 
-Run `:RivetTask test`. CTest should report one passing test, `counter_test`. It checks positive and negative operands without an external test framework. Use `q` to close the output, `:RivetOutput` to reopen it, and `:RivetPreset` to change the remembered preset.
+Wait for Run to finish, then run `:RivetTask test`. CTest should report one passing test, `counter_test`. It checks positive and negative operands without an external test framework. Use `q` to close the output, `:RivetOutput` to reopen it, and `:RivetPreset` to change the remembered preset.
 
 ## Add a source/header pair
 
@@ -69,7 +66,7 @@ In `include/answer.h`, keep the generated guard and C++ compatibility wrapper. R
 int answer(void);
 ```
 
-Replace the function in `src/answer.c`, keeping its include and optional file header:
+Replace the contents of `src/answer.c` with:
 
 ```c
 #include "answer.h"
@@ -79,51 +76,24 @@ int answer(void) { return 42; }
 
 In `app/main.c`, include `answer.h` and change the printed expression from `rivet_add(20, 22)` to `answer()`. Save with `:wall` and run `:RivetTask run` again. The result remains `42`; the application now calls your new library function.
 
-For a nested component, enter a project-relative name such as `src/io/message` in the file wizard. This creates the missing parent directories and places both files together as `src/io/message.c` and `src/io/message.h`. Review the paths and target before applying. A bare name uses the normal `src/` and `include/` locations. See [Files and targets](/docs/templates/) for other arrangements.
+## Test your function
 
-## Generate API documentation with Doxygen
-
-Doxygen is a useful next step for a C library: keep parameter descriptions, return values, and preconditions beside the declarations callers use. Rivet's **Doxygen documentation** header supplies file-level context; Doxygen generates the browsable reference. Install Doxygen separately, then run this from the project root if you do not already have a `Doxyfile`:
-
-```sh
-doxygen -g Doxyfile
-```
-
-Edit these settings in that file:
-
-```text
-PROJECT_NAME = counter
-INPUT = include src
-FILE_PATTERNS = *.h *.c
-RECURSIVE = YES
-OPTIMIZE_OUTPUT_FOR_C = YES
-OUTPUT_DIRECTORY = docs/api
-GENERATE_HTML = YES
-GENERATE_LATEX = NO
-```
-
-Add an `@file` comment to a header if it does not already have one, and document each public function. For example, above `rivet_add` in `include/counter.h`:
+Replace `tests/core_test.c` with the original checks plus a check for `answer`:
 
 ```c
-/**
- * @brief Add two integers.
- * @param a First operand.
- * @param b Second operand.
- * @pre The mathematical sum is representable as an int.
- * @return The sum of a and b.
- */
-int rivet_add(int a, int b);
+#include "counter.h"
+#include "answer.h"
+
+int main(void) {
+  return rivet_add(20, 22) == 42 && rivet_add(-1, 1) == 0
+      && answer() == 42 ? 0 : 1;
+}
 ```
 
-Create the output directory and generate the reference:
+Save and run `:RivetTask test`. CTest should still report one passing test: the executable now checks all three expressions.
 
-```sh
-mkdir -p docs/api
-doxygen Doxyfile
-```
+Temporarily change `answer` to return `41`, save, and run Test again. The test should fail. Restore `42`, save, and use `:RivetTask repeat`; the test should pass.
 
-Then open `docs/api/html/index.html` in your browser. Add `/docs/api/` to `.gitignore` if you keep generated documentation out of source control. These commands run Doxygen directly; Rivet does not install it or generate a Doxyfile automatically. The official [getting-started guide](https://www.doxygen.nl/manual/starting.html), [comment syntax](https://www.doxygen.nl/manual/docblocks.html), and [C output setting](https://www.doxygen.nl/manual/config.html#cfg_optimize_output_for_c) explain the configuration.
+## Next steps
 
-## Keep iterating
-
-Save your edits before tasks. A compiler failure appears in the output; `:copen` opens collected diagnostics and Enter jumps to the selected location. Fix the error and use `:RivetTask repeat`. `:RivetConfig clang-format` reviews formatting settings, and the [C guide](/docs/c/) covers native project ownership and future targets.
+You have added and tested a function in the reusable library. See [C projects](/docs/c/) for more targets, [Files and targets](/docs/templates/) for file placement, or [Doxygen](/docs/doxygen/) to document the public API.

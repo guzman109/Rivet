@@ -1,16 +1,16 @@
 ---
 title: Your first Python project
-description: Create a Python package and application, run its unittest tests, add a module, and document its API.
-section: Start here
-order: 6
-updated: '2026-10-13'
+description: Create a Python application, add a package module, and run its unittest tests.
+section: Tutorials
+order: 4
+updated: '2026-10-14'
 ---
 
 Create a Python application named `counter` with a reusable package, a command-line entry point, and a standard-library test. This walkthrough uses your existing Python environment and needs no package downloads for its build, run, or test steps.
 
 ## Check your tools
 
-Use Python 3.11 or newer and [install Rivet](/docs/start-here/#install-in-neovim) in Neovim 0.11 or newer. Rivet prefers an explicit local Python choice, then the project's `.venv`, an active `VIRTUAL_ENV`, and an available Python executable. After creation, `:RivetDoctor` reports the project tools.
+Use Python 3.11 or newer and [install Rivet](/docs/start-here/#install-in-neovim) in Neovim 0.11 or newer. Make Python 3.11+ available as `python3` on Neovim's `PATH`. After creation, `:RivetDoctor` reports the interpreter selection; see [Python environments](/docs/python/) if you need an override.
 
 ## Create the project
 
@@ -27,9 +27,9 @@ Run `:RivetNew`, select **New choices** if a profile menu appears, and use:
 | Project language     | `python`                                                              |
 | Create project in    | Current folder                                                        |
 | Project name         | `counter`                                                             |
-| Git repository       | Skip Git initialization, or initialize/reuse a repository             |
-| Project license      | No license yet, or your chosen license with its requested holder/year |
-| File comment headers | No header, or personalize and preview the available Python styles     |
+| Git repository       | Skip Git initialization                                               |
+| Project license      | No license yet                                                        |
+| File comment headers | No header                                                             |
 | Project kind         | Application                                                           |
 | Python environment   | Python / existing environment                                         |
 
@@ -66,7 +66,7 @@ Use `q` to close output and `:RivetOutput` to reopen it. A failed assertion or s
 
 ## Add and use a module
 
-Run `:RivetFile`, select **python**, then choose **Source file** in the **New source file** preview. It shows the configured header, or says that no header is configured. Enter `greeting`, review the new `src/counter/greeting.py`, then apply with `c`. Keep its optional header and give the module this implementation:
+Run `:RivetFile`, select **python**, then choose **Source file**. Enter `greeting`, review the new `src/counter/greeting.py`, then apply with `c`. Replace its contents with:
 
 ```python
 """Messages for the counter application."""
@@ -100,54 +100,10 @@ Save with `:wall`, then run `:RivetTask run`. Expect `Hello, Rivet!` followed by
         self.assertEqual(greeting("Rivet"), "Hello, Rivet!")
 ```
 
-Run `:RivetTask test` again; it should report two passing tests.
+Save with `:wall`, then run `:RivetTask test` again; it should report two passing tests.
 
-For another folder, a name containing `/` is relative to the project root: `src/counter/io/messages` creates its missing parent directories and `messages.py`. Rivet creates the file, while you maintain Python imports and any `__init__.py` files your package layout needs. A bare name such as `greeting` stays inside `src/counter/`. Review every destination before applying; see [Files and targets](/docs/templates/).
+Temporarily change the expected greeting in the test to `Hello, Python!`, save, and run Test again. It should fail with the unequal strings. Restore `Hello, Rivet!`, save, and use `:RivetTask repeat`; both tests should pass.
 
-## Choose environment and packaging actions explicitly
+## Next steps
 
-For the **Python / existing environment** choice, `:RivetTask configure` creates `.venv` only when there is no project environment, active environment, or explicit local interpreter. Otherwise it checks the selected interpreter. Run it when you want that environment step; ordinary run/test/build tasks do not create one.
-
-If you choose **uv (sync explicitly during configure)** instead, configure runs `uv sync --inexact --no-python-downloads`, which can install project dependencies. Later tasks use `uv run --no-sync`. Rivet does not install uv itself.
-
-Optional tasks use tools installed in the selected environment: **format** and **lint** use Ruff; **package** uses `python -m build`, or `uv build` for a uv project. Install these tools explicitly when you need them. Installing the project in your chosen environment with `python -m pip install -e .` exposes the `counter` console command. The [Python guide](/docs/python/) covers interpreter overrides and test-runner settings.
-
-## Document the API with Doxygen
-
-Doxygen can include Python API documentation alongside C or C++ documentation, which is useful when a project crosses language boundaries. Its native Python parser reads docstrings, but ordinary docstrings are displayed as preformatted text by default. To interpret Doxygen commands such as `@param`, set `PYTHON_DOCSTRING = NO`; `##` documentation comments are another supported form. See the official [Python comment documentation](https://www.doxygen.nl/manual/docblocks.html#pythonblocks) and [docstring setting](https://www.doxygen.nl/manual/config.html#cfg_python_docstring).
-
-After installing Doxygen separately, run `doxygen -g Doxyfile` from the project root if the configuration does not exist. Edit these settings:
-
-```text
-PROJECT_NAME = counter
-INPUT = src
-FILE_PATTERNS = *.py
-RECURSIVE = YES
-OPTIMIZE_OUTPUT_JAVA = YES
-PYTHON_DOCSTRING = NO
-OUTPUT_DIRECTORY = docs/api
-GENERATE_HTML = YES
-GENERATE_LATEX = NO
-```
-
-Despite its name, `OPTIMIZE_OUTPUT_JAVA` is also the documented setting for Python-only output. Keep this setting specific to a Python-only configuration. See the [configuration reference](https://www.doxygen.nl/manual/config.html#cfg_optimize_output_java).
-
-Expand the function docstring in `greeting.py`:
-
-```python
-def greeting(name: str) -> str:
-    """@brief Build a greeting.
-    @param name Name to include in the message.
-    @return The complete greeting.
-    """
-    return f"Hello, {name}!"
-```
-
-Create the output directory and generate the reference:
-
-```sh
-mkdir -p docs/api
-doxygen Doxyfile
-```
-
-Open `docs/api/html/index.html` and review the generated API pages as you change your source. Rivet's file headers do not generate this site or replace function docstrings; Doxygen remains a separate command. You can ignore `/docs/api/` in Git while keeping `Doxyfile` and your documented source. The [Doxygen getting-started guide](https://www.doxygen.nl/manual/starting.html) covers generating and running that configuration.
+You have created and tested a package module. The [Python guide](/docs/python/) covers virtual environments, uv, formatting, and packaging. Use [Files and targets](/docs/templates/) when adding files outside the package's default directory.

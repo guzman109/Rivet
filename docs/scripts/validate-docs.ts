@@ -242,13 +242,17 @@ for (const slug of requiredSlugs) {
 	check(slugs.has(slug), `Required documentation page missing: ${slug}`);
 }
 const ordering = new Set<string>();
-const sectionOrder = ['Start here', 'Guides', 'Reference'];
+const sectionOrder = ['Start here', 'Tutorials', 'How-to guides', 'Reference', 'Explanation'];
 const readingOrder = [...documents].sort(
 	(a, b) =>
 		sectionOrder.indexOf(a.metadata.section) - sectionOrder.indexOf(b.metadata.section) ||
 		a.metadata.order - b.metadata.order
 );
 for (const doc of documents) {
+	check(
+		sectionOrder.includes(doc.metadata.section),
+		`${doc.slug}: unknown documentation section ${doc.metadata.section}`
+	);
 	const key = `${doc.metadata.section}:${doc.metadata.order}`;
 	check(
 		!ordering.has(key),
@@ -434,7 +438,7 @@ if (!sourceOnly) {
 					.map((entry) => `${base}/docs/${entry.slug}/`);
 				const neighbours =
 					page.html.match(
-						/<nav\b[^>]*aria-label="Previous and next guides"[^>]*>([\s\S]*?)<\/nav>/i
+						/<nav\b[^>]*aria-label="Previous and next pages"[^>]*>([\s\S]*?)<\/nav>/i
 					)?.[1] ?? '';
 				const actualNeighbours = Array.from(neighbours.matchAll(/<a\b[^>]*>/gi), (match) =>
 					attributes(match[0]).get('href')

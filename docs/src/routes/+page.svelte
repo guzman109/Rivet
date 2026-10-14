@@ -8,13 +8,13 @@
   version = vim.version.range('0.1.x'),
 } })
 require('rivet').setup()`;
-	const terminal = `./bin/rivet new ./hello \\\n  --name hello --modules false --preview`;
+	const terminal = `./bin/rivet new ./hello \\\n  --name hello --standard 17 --modules false --preview`;
 	const guides = [
 		{
 			number: '01',
 			slug: 'first-project',
-			title: 'C++ for your workload.',
-			text: 'Headers or modules, from a first build to HPC and graphics.',
+			title: 'Build your first C++ project.',
+			text: 'Create a C++26 application, add a named module, and test it.',
 			tag: 'C++'
 		},
 		{
@@ -28,28 +28,28 @@ require('rivet').setup()`;
 			number: '03',
 			slug: 'first-rust-project',
 			title: 'Keep Cargo in charge.',
-			text: 'Applications, libraries, and workspaces with native tasks.',
+			text: 'Create a Rust application, edit its greeting, and test it with Cargo.',
 			tag: 'RUST'
 		},
 		{
 			number: '04',
 			slug: 'first-swift-project',
 			title: 'Start with a Swift package.',
-			text: 'Build reusable logic and hand Apple application work to Xcode.',
+			text: 'Create a command-line package, build it, and test its behavior.',
 			tag: 'SWIFT'
 		},
 		{
 			number: '05',
 			slug: 'first-c-project',
 			title: 'C with a clear build.',
-			text: 'Strict C projects and ABI headers for C++ interoperability.',
+			text: 'Create a C17 application, change a function, and run CTest.',
 			tag: 'C'
 		},
 		{
 			number: '06',
 			slug: 'first-lua-project',
-			title: 'Lua from scripts to plugins.',
-			text: 'Portable modules, Neovim plugins, and optional embedded hosts.',
+			title: 'Run your first Lua application.',
+			text: 'Create a Lua application, check its syntax, and run its tests.',
 			tag: 'LUA'
 		}
 	];
@@ -168,7 +168,7 @@ require('rivet').setup()`;
 	</section>
 	<footer class="site-footer">
 		<span>Rivet <span aria-hidden="true">/</span> Tools for the work ahead.</span><a
-			href={docHref('extending')}>Under the hood ↗</a
+			href={docHref('extending')}>Write a language provider ↗</a
 		>
 	</footer>
 </div>

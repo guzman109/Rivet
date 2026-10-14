@@ -1,20 +1,48 @@
 ---
 title: Modules and headers
-description: Understand single-file modules, optional implementation units, and Rivet’s module choices.
-section: Guides
-order: 10
-updated: '2026-10-09'
+description: C++ module options, generated files, syntax, and toolchain requirements.
+section: Reference
+order: 7
+updated: '2026-10-14'
 ---
 
-## What a module replaces
+Rivet supports named C++ modules and conventional headers. A module exposes declarations with `export`; consumers use `import` and link the module's object code. See [Clang's module guide](https://clang.llvm.org/docs/StandardCPlusPlusModules.html#quick-start) for the language model.
 
-A named module can put a public interface and its implementation in one source file. You do not have to maintain a matching header for consumers to include. The interface unit is itself compiled; it can contain function bodies as well as declarations. [Clang’s single-file example](https://clang.llvm.org/docs/StandardCPlusPlusModules.html#quick-start) uses exactly this arrangement.
+## Creation options
 
-The important change is how code is shared: consumers import an explicitly exported interface instead of textually including a header. Modules do not require all implementation code to live in one file, and fewer files are not their only purpose.
+| Option | Values and behavior |
+| --- | --- |
+| `--modules` | `true` by default in C++20/23/26; `false` in C++17. Controls project interfaces. |
+| `--std-modules` | `false` by default. Enables `import std;`; requires C++23+ and a compatible toolchain. |
+| `--module-layout` | `split` (default) or `single`. Controls the initial named-module layout. |
+| `--header-guard` | `pragma` (default) or `ifndef`. Applies to headers, not module units. |
 
-## Your first named module
+The project-interface and standard-library choices are independent:
 
-This is a complete module in **one file**, `memory.cppm`:
+| Project interfaces | Standard library | CLI flags |
+| --- | --- | --- |
+| Named modules | Headers | `--modules true --std-modules false` |
+| Named modules | Modules | `--modules true --std-modules true` |
+| Headers | Modules | `--modules false --std-modules true` |
+| Headers | Headers | `--modules false --std-modules false` |
+
+Rivet requires Ninja when either module option is enabled. It offers Unix Makefiles when both are disabled. Changing manifest options alone does not convert existing source or build files.
+
+## Generated files and templates
+
+| Choice | Generated structure |
+| --- | --- |
+| Single-file module | `core.cppm` contains declarations and definitions. |
+| Interface + implementation | `core.cppm` declares the interface; `core.cpp` defines its functions. |
+| `module` file template | One `.cppm` interface; definitions may live there. |
+| `module_pair` file template | Matching interface and implementation files. |
+| `module_impl` file template | Implementation unit for an existing module; CLI requires `--module NAME`. |
+
+Interfaces belong to a `CXX_MODULES` file set; implementation units belong to the ordinary source list. Consumers link the owning library. Module names, filenames, and CMake target names are independent. `.cppm` is Rivet's file convention. See [CMake's module guide](https://cmake.org/cmake/help/latest/manual/cmake-cxxmodules.7.html).
+
+## Single-file and split syntax
+
+A single-file interface, `memory.cppm`:
 
 ```cpp
 export module engine.memory;
@@ -24,7 +52,7 @@ int page_size() { return 4096; }
 }
 ```
 
-A consumer, `main.cpp`, imports the module by name:
+A consumer, `main.cpp`:
 
 ```cpp
 import engine.memory;
@@ -34,21 +62,7 @@ int main() {
 }
 ```
 
-No `memory.hpp` or separate implementation file is needed. The module still needs to be built and its object code linked into the application; `import` does not replace linking. A compiler typically produces a built module interface (BMI) for importers and object code for the linker.
-
-## Optional separate implementation
-
-You can instead keep declarations in `memory.cppm`:
-
-```cpp
-export module engine.memory;
-
-export namespace engine {
-int page_size();
-}
-```
-
-Then put the body in `memory.cpp`:
+For a split module, replace the definition in `memory.cppm` with `int page_size();` and put the body in `memory.cpp`:
 
 ```cpp
 module engine.memory;
@@ -58,36 +72,11 @@ int page_size() { return 4096; }
 }
 ```
 
-These are **alternatives**: do not keep the same function body in both files. The consumer is unchanged. `module engine.memory;` makes this an implementation unit and implicitly imports its primary interface; it does not need to include an interface header.
-
-A named module has one primary interface and may have additional units. Splitting implementation into separate units can keep large bodies out of the interface and reduce the work caused by implementation-only edits. This is an organization choice, not a requirement to recreate a header/source pair. See the [C++ module-unit rules](https://eel.is/c++draft/module.unit).
-
-## What Rivet generates
-
-The wizard offers **Single-file module** and **Interface + implementation**. The CLI uses `--module-layout single|split`; split remains the default for compatibility. Single-file mode places declarations and definitions in `core.cppm`, while split mode also creates `core.cpp`. Adding a `module` template creates only a `.cppm`; you can write definitions there. Add `module_impl` only when you want a separate implementation unit. This is a creation choice; changing the manifest alone does not convert existing source files.
-
-Rivet registers interfaces in a `CXX_MODULES` file set and implementation units in the target’s ordinary source list. Both are compiled. Consumers link the owning CMake library. Module names, filenames, target names, and file-set names are distinct; `.cppm` is the convention used here, not a C++ language requirement. See [CMake’s module guide](https://cmake.org/cmake/help/latest/manual/cmake-cxxmodules.7.html).
-
-Module units do not need header guards. Guards prevent repeated textual inclusion of headers; the saved guard preference still applies to Rivet’s `.hpp` templates.
-
-## Choose project and standard-library modules separately
-
-Named modules are a C++20 feature; the standard-library modules `std` and `std.compat` were added in C++23. Rivet offers C++17/20/23/26. Named modules require at least 20; `import std` requires at least 23 and a supported toolchain. [libc++ documents the standard-library modules and its support requirements](https://libcxx.llvm.org/Modules.html).
-
-`--modules` controls your project’s own interfaces. `--std-modules` controls whether generated source files use `import std;` for the standard library.
-
-| Project interfaces | Standard library | CLI flags |
-| --- | --- | --- |
-| Named modules | Headers, the default | `--modules true --std-modules false` |
-| Named modules | Standard-library modules | `--modules true --std-modules true` |
-| Headers | Standard-library modules | `--modules false --std-modules true` |
-| Headers | Headers | `--modules false --std-modules false` |
-
-Either module option requires Ninja **in Rivet**. Unix Makefiles are available when both are disabled. This is Rivet’s supported generator selection, not a language rule.
+The implementation unit implicitly imports its primary interface. Keep each non-inline function definition in one unit. See the [C++ module-unit rules](https://eel.is/c++draft/module.unit).
 
 ## Include and import placement
 
-For ordinary standard-library or third-party headers, put textual includes in the global module fragment, before the named module declaration. This keeps their declarations attached to the global module rather than accidentally attaching them to your named module:
+Put conventional headers in the global module fragment, before the named module declaration:
 
 ```cpp
 module;
@@ -98,7 +87,7 @@ export module engine.memory;
 export std::size_t page_size();
 ```
 
-With standard-library modules enabled, import after the module declaration:
+With standard-library modules enabled:
 
 ```cpp
 export module engine.memory;
@@ -107,23 +96,19 @@ import std;
 export std::size_t page_size();
 ```
 
-In a module unit, imports go after the module declaration and before other declarations in its purview. Rivet puts local includes before imports in ordinary non-module source files; that ordering is a template convention, not a universal rule for all source files. Headers should include what their own declarations need. See the [import rules](https://eel.is/c++draft/module.import) and [global module fragment rules](https://eel.is/c++draft/module.global.frag).
+In a module unit, imports follow the module declaration and precede other declarations in its purview. See the [import rules](https://eel.is/c++draft/module.import) and [global module fragment rules](https://eel.is/c++draft/module.global.frag).
 
-Named-module imports, including `import std;`, do not expose macros. Header-unit imports such as `import <vector>;` are different: they can make macros available. Rivet does not generate header units, and CMake’s documented module support does not currently support them.
+Named-module imports do not expose macros. Header-unit imports such as `import <vector>;` can expose them, but Rivet does not generate header units and CMake's documented module support excludes them.
 
-## Enable standard-library modules
+## Standard-library module requirements
+
+Rivet's generated helper accepts **CMake 4.4.0–4.4.4** and enables the [release-specific experimental gate](https://github.com/Kitware/CMake/blob/v4.4.4/Help/dev/experimental.rst) before compiler discovery. Configuration checks the selected compiler and library for C++23 or C++26 `import std` support. The [libc++ module documentation](https://libcxx.llvm.org/Modules.html) describes its compiler and library requirements; [Compatibility](/docs/compatibility/) records Rivet's tested combinations.
+
+The helper can locate libc++ module metadata beside the selected compiler. An explicit `CMAKE_CXX_STDLIB_MODULES_JSON` in `CMakeUserPresets.json` takes precedence. Unsupported combinations produce an error.
 
 ```sh
 rivet new ./compute --name compute \
   --modules true --std-modules true --build
 ```
 
-The generated helper currently accepts **CMake 4.4.0 through 4.4.4**, whose experimental gate values were verified against [CMake's release-specific guide](https://github.com/Kitware/CMake/blob/v4.4.4/Help/dev/experimental.rst). It checks the selected compiler and library for import support in the selected C++23 or C++26 mode. Homebrew LLVM 23.1.2 with CMake 4.4.4 is the tested macOS configuration; C++26 mode does not imply every C++26 library feature is implemented.
-
-The helper enables the gate before compiler discovery and checks capabilities afterward. It can discover missing libc++ metadata beside the selected compiler. Explicit `CMAKE_CXX_STDLIB_MODULES_JSON` settings in the local user preset take precedence. It preserves your compiler choice and reports unsupported combinations instead of silently switching to includes.
-
-## Build before diagnosing the editor
-
-The first Debug build creates the standard-library module artifacts and compilation database. Newly added source and module templates retain the project's standard-library choice. Existing manifests without `std_modules` retain include behavior; changing that field alone does not migrate an existing project's sources and CMake files.
-
-Clangd support is a separate requirement. Its [module support is experimental](https://clangd.llvm.org/features#experimental-c20-modules-support), so successful compilation does not guarantee identical editor diagnostics. The starter uses `std::cout`; that choice is not a statement that `std::println` is unsupported by C++. See [Troubleshooting](/docs/troubleshooting/) for the build-and-recheck sequence.
+The first build generates module artifacts and a compilation database. Clangd's [module support is experimental](https://clangd.llvm.org/features#experimental-c20-modules-support); editor diagnostics can differ from compiler results. See [Troubleshooting](/docs/troubleshooting/) after confirming the build succeeds.

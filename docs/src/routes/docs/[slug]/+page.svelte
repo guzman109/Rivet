@@ -27,7 +27,7 @@
 			</div>
 		</header>
 		{#key data.doc.slug}<article class="prose" use:codeTools><Content /></article>{/key}
-		<nav class="page-neighbours" aria-label="Previous and next guides">
+		<nav class="page-neighbours" aria-label="Previous and next pages">
 			{#if data.previous}<a href={docHref(data.previous.slug)}
 					><span>← Previous</span><strong>{data.previous.title}</strong></a
 				>{:else}<div></div>{/if}

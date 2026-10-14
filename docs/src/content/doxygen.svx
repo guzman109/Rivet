@@ -1,52 +1,40 @@
 ---
 title: Document your API with Doxygen
-description: Start documentation alongside code, generate HTML and XML, and share a clear interface with other documentation projects.
-section: Guides
-order: 27
-updated: '2026-10-13'
+description: Generate and inspect HTML and XML documentation for a C or C++ project.
+section: How-to guides
+order: 8
+updated: '2026-10-14'
 ---
 
-Use Doxygen from the first public function in a C or C++ project. Keeping API documentation next to declarations makes the generated reference follow the code you review and release. Rivet provides Doxygen-style file headers; Doxygen builds the documentation from those headers and your function, type, and module comments.
+Use this guide to generate an API reference from a C or C++ project. You need an existing project and Doxygen on `PATH`; check with `doxygen --version`. On macOS, install it with `brew install doxygen` ([formula](https://formulae.brew.sh/formula/doxygen)); other platforms can follow the [installation guide](https://www.doxygen.nl/manual/install.html).
 
-Doxygen is a separate, explicitly installed tool. Rivet does not install it or automatically add a documentation build. Start with a small documented API and inspect its HTML before expanding the configuration.
+## 1. Document the public interface
 
-## Choose Doxygen headers in Rivet
+In a Rivet project, run `:RivetHeaderDefaults` and choose **Doxygen documentation** for future files. Use `:RivetHeader` to add it to an existing header or module interface. See [file comment headers](/docs/comment-headers/) for the commands.
 
-In `:RivetNew`, choose **Personalize and preview styles**, supply the details you want, and select **Doxygen documentation** for C/C++. Use `:RivetHeaderDefaults` to set this style for future files, or `:RivetHeader` to review the current file’s header. `:RivetFile` previews the configured header while choosing templates; its final review shows the actual filename in every generated file.
-
-A file header describes the file. Add documentation to each public API as well:
+Add API comments beside public declarations. For example, document a public addition function:
 
 ```cpp
 /**
- * @brief Divide work among workers without overlapping ranges.
- * @param total Number of items to divide.
- * @param workers Number of workers; must be positive.
- * @param index Zero-based worker index.
- * @return The half-open range assigned to this worker.
+ * @brief Add two integers.
+ * @param a First operand.
+ * @param b Second operand.
+ * @return Their sum, which must be representable as an int.
  */
-WorkRange partition_work(int total, int workers, int index);
+int add(int a, int b);
 ```
 
-Put these comments in a public header or an exported module interface. Document assumptions, ownership, units, and error behavior that callers need. Prefer one canonical API description over repeating the same text in a declaration and its implementation. Doxygen recognizes structured C/C++ documentation comments and explicit commands such as `@brief`, `@param`, and `@return`. See [documenting code](https://www.doxygen.nl/manual/docblocks.html).
+Document containing public namespaces too, for example `/** @brief Public engine API. */` above `export namespace engine`. Include caller-visible assumptions and error behavior. Keep one canonical description beside the public declaration. See Doxygen's [comment conventions](https://www.doxygen.nl/manual/docblocks.html).
 
-## Generate your first documentation
+## 2. Configure the inputs and outputs
 
-On macOS with Homebrew, install and check Doxygen:
-
-```sh
-brew install doxygen
-doxygen --version
-```
-
-See the [Homebrew formula](https://formulae.brew.sh/formula/doxygen) for its current requirements. Other platforms can follow the [Doxygen installation guide](https://www.doxygen.nl/manual/install.html).
-
-After installing Doxygen, run this from the project root if you do not already have a `Doxyfile`:
+From the project root, generate a configuration if you do not already have one:
 
 ```sh
 doxygen -g Doxyfile
 ```
 
-Edit the generated configuration. For the C++ feature layout, a useful starting point is:
+Edit these entries. This example targets Rivet's C++ feature layout:
 
 ```ini
 PROJECT_NAME           = engine
@@ -59,38 +47,24 @@ SOURCE_BROWSER         = YES
 GENERATE_HTML          = YES
 GENERATE_XML           = YES
 GENERATE_LATEX         = NO
-GENERATE_TAGFILE        = build/docs/engine.tag
 ```
 
-Add `include` to `INPUT` for a public-header layout. Use `INPUT = . README.md` for a flat layout and exclude build/cache directories. Choose only directories that exist in your project. Keep `EXTRACT_ALL = NO` when you want undocumented API warnings to remain useful. If exploring an existing codebase, temporarily enable it and turn it off again before using documentation coverage as a quality check.
+Set `PROJECT_NAME` to your project name and list only existing source directories in `INPUT`. Add `include` for a public-header layout. For a flat layout, use `INPUT = .` and `EXCLUDE = build .cache .git`. Keep `EXTRACT_ALL = NO` to retain undocumented-member warnings. See the [configuration reference](https://www.doxygen.nl/manual/config.html).
+
+## 3. Generate and inspect the reference
 
 ```sh
 mkdir -p build
 doxygen Doxyfile
 ```
 
-Inspect `build/docs/html/index.html`, review warnings, and confirm the expected functions and module interfaces appear. Current Doxygen recognizes `.cppm` inputs; parser output still deserves review alongside the compiler’s build result. Commit the `Doxyfile` and documentation comments, and keep generated output out of source control. Rivet projects already ignore `build/`.
+Open `build/docs/html/index.html`, resolve relevant warnings, and confirm your public functions, types, and module interfaces appear. Doxygen recognizes `.cppm`, but its parser output still needs inspection. The [getting-started guide](https://www.doxygen.nl/manual/starting.html) covers the generation process.
 
-The [Doxygen configuration reference](https://www.doxygen.nl/manual/config.html) explains each setting; its [getting-started guide](https://www.doxygen.nl/manual/starting.html) covers configuration generation and running the tool.
-
-## Connect a documentation project
-
-Treat Doxygen’s XML as the interchange format for another documentation application. With `GENERATE_XML = YES`, the output includes `build/docs/xml/index.xml` and compound XML files. Preserve the complete XML directory when handing it to a consumer; the index alone is not the whole API. Agree on a compatible Doxygen version and XML schema with that consumer.
-
-For a renderer or documentation application, use this flow:
-
-1. Build and test the code at a known Git revision.
-2. Run Doxygen with the committed configuration.
-3. Give the complete XML directory and project/revision identity to the consumer.
-4. Inspect the rendered API, then publish it with the corresponding release.
-
-For links between two Doxygen-generated sites, use tag files instead of importing XML. One project emits `GENERATE_TAGFILE`; the other sets `TAGFILES = path/to/engine.tag=https://your-docs-host/engine/`. The URL must match the published HTML location. Document containing public namespaces too, for example with `/** @brief Public engine API. */` above `export namespace engine`. With `EXTRACT_ALL = NO`, an undocumented namespace can leave its functions out of the tag file even when they appear in HTML and XML. Inspect the expected symbols before using the tag file. See [linking to external documentation](https://www.doxygen.nl/manual/external.html).
-
-This keeps your code project usable independently while giving a documentation tool a repeatable input. Rivet does not assume a particular external renderer or invoke one automatically.
+Commit `Doxyfile` and your documentation comments. Generated projects ignore `build/`, so the rendered output stays out of source control.
 
 ## Add an optional CMake documentation target
 
-Put this extension in your editable root `CMakeLists.txt`, after Rivet’s generated includes:
+To regenerate documentation through CMake, add this after the generated includes in the editable root `CMakeLists.txt`:
 
 ```cmake
 find_package(Doxygen QUIET)
@@ -102,16 +76,17 @@ if(DOXYGEN_FOUND)
 endif()
 ```
 
-Configure again, then run `cmake --build --preset debug --target docs`. This explicit target leaves normal builds independent of Doxygen. Keep the configuration beside the code; [project upgrades](/docs/upgrading/) preserve locally extended root CMake files.
+Configure again, then build the target:
 
-## Other languages
+```sh
+cmake --preset debug
+cmake --build --preset debug --target docs
+```
 
-| Language | Documentation path |
-| --- | --- |
-| C / C++ | Recommend Doxygen comments and HTML/XML generation from headers, sources, and module interfaces. |
-| Python | Doxygen has a native Python parser. Follow its Python comment conventions; `PYTHON_DOCSTRING = NO` enables special-command processing in docstrings. See [your first Python project](/docs/first-python-project/). |
-| Rust | Use rustdoc comments and `cargo doc` for the native API reference. Doxygen needs a separately configured language filter or adapter. |
-| Swift | Use Swift documentation comments and your package’s documentation tooling. Doxygen needs a separate adapter for Swift source. |
-| Lua | Use Lua documentation comments and Neovim help for plugins. Doxygen needs a separate Lua filter or adapter. |
+Use your own preset names in an existing project. The target runs only when requested. [Project upgrades](/docs/upgrading/) preserve locally extended root CMake files.
 
-Rust, Swift, and Lua are absent from Doxygen’s [built-in language list](https://www.doxygen.nl/manual/starting.html#step0). A filter must translate the language into input Doxygen understands; mapping an extension to the C++ parser alone does not add language support. A mixed project can document its C/C++ API through Doxygen and link its native language documentation alongside it.
+## Connect a documentation project
+
+For an external renderer, pass the complete `build/docs/xml/` directory, including `index.xml` and the compound files, together with the source revision. Use a Doxygen version supported by the consumer and inspect its rendered API before publishing.
+
+To link two Doxygen sites, add `GENERATE_TAGFILE = build/docs/engine.tag` to the producer's configuration and regenerate. Set `TAGFILES = path/to/engine.tag=https://your-docs-host/engine/` in the consumer's configuration. Replace the path and URL with the producer's tag file and published HTML location. Check that expected namespaces and symbols are present in the tag file. See [external documentation links](https://www.doxygen.nl/manual/external.html).

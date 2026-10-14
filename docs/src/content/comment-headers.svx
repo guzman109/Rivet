@@ -1,98 +1,76 @@
 ---
 title: File comment headers
-description: Enter your details, compare header styles, and review additions or edits before applying them.
-section: Guides
-order: 15
-updated: '2026-10-13'
+description: Header commands, metadata fields, styles, and update behavior.
+section: Reference
+order: 5
+updated: '2026-10-14'
 ---
 
-A file comment header is the introductory comment at the top of a source file. It can identify the file, project, author, date, or license. It is separate from a C++ `.hpp` file or an include guard.
+File comment headers identify a source file, its project, and optional author or license details. Rivet stores project defaults in `.rivet.json` and applies the language's comment syntax when generating files.
 
-To create a complete `LICENSE` file, use the separate [project license step](/docs/licenses/) in the creation wizard. It can supply the initial SPDX and copyright fields below. Editing a header alone does not license or relicense the project.
+## Commands
 
-## Personalize during creation
+| Command or wizard step | Effect |
+| --- | --- |
+| `:RivetNew` → **Personalize and preview styles** | Set header defaults for a new project. |
+| `:RivetHeader` | Preview a header edit for the current supported source file in a Rivet project; apply it to the buffer. |
+| `:RivetHeaderDefaults` | Update the manifest defaults used by future files and targets. Existing source headers stay as written. |
+| `:RivetIdentity` | Save optional personal defaults for later projects. See [Configuration](/docs/configuration/). |
 
-In `:RivetNew`, choose **Personalize and preview styles** when asked about file comment headers. Rivet asks for your details before showing the style previews:
+The CLI's file and target generators honor saved defaults; interactive header editing is available in Neovim.
+
+## Metadata fields
 
 | Field | Behavior |
 | --- | --- |
-| Author, email, organization | Optional credits; blank fields are omitted. |
-| Creation date | `today` uses the date each new file is generated. A fixed `YYYY-MM-DD` uses that date; blank omits it. |
-| Copyright notice | Your supplied text, such as `2026 Ada Lovelace`. Rivet does not infer an owner from the author or organization. |
-| SPDX license expression | Your supplied identifier or expression. Blank omits licensing text. |
-| Description | An optional summary shared by new files. It can be customized per file later. |
+| `author`, `email`, `organization` | Optional credits. Blank fields are omitted. |
+| `created` | `today` uses the generation date; `YYYY-MM-DD` fixes the date; blank omits it. |
+| `copyright` | Supplied notice, such as `2026 Ada Lovelace`. |
+| `license` | Supplied SPDX identifier or expression; blank omits it. |
+| `description` | Summary shared by new files; editable per file afterward. |
 
-These details are saved in the project's `.rivet.json` and inserted into generated source files accepted by the language's header service: C/C++, Python, Rust, Swift, or Lua. Enter only details you want in those project files. Rivet does not look up your identity or choose a license for you.
+Fields must be single-line text, at most 512 bytes, without comment-closing delimiters or a trailing backslash. Rivet does not infer identity from Git or the OS account. Enter only details you want saved with the project.
 
-## Compare the styles
+The [project license step](/docs/licenses/) creates `LICENSE` and can supply initial copyright and SPDX fields. Changing a header alone does not update that license file.
 
-The picker renders each style with your actual details and the preview filename. Move with `j` and `k`, scroll the preview with Tab, and select with Enter. The final project review includes the actual header in every generated file; `c` or Ctrl-S approves creation.
+## Styles
 
-These examples use **Ada Lovelace** as a placeholder. Rivet leaves the real author field blank until you supply it.
+| Style ID | Picker label | Output |
+| --- | --- | --- |
+| `compact` | Compact | Short line-comment metadata. |
+| `xcode` | Xcode-style | Filename, project, and credits separated by blank comment lines. |
+| `doc` | Doxygen documentation for C/C++; Documentation block elsewhere | Structured documentation comments; unavailable for Python. |
+| `spdx` | SPDX first | License expression and optional copyright first; requires a license expression. |
+| `none` | No header | No generated file comment header. |
 
-**Compact** keeps the metadata in a short sequence of line comments:
+Compact C++ example:
 
 ```cpp
 // main.cpp — engine
 // Author: Ada Lovelace
-// Created: 2026-10-09
+// Created: 2026-10-14
 ```
 
-**Xcode-style** separates the filename, project, and credits with blank comment lines:
-
-```cpp
-//
-//  main.cpp
-//  engine
-//
-//  Author: Ada Lovelace
-//  Created: 2026-10-09
-//
-```
-
-**Doxygen documentation** is the recommended C/C++ API-documentation choice. It uses C-style file documentation tags. Python offers line-comment styles instead:
+Doxygen C++ example:
 
 ```cpp
 /**
  * @file main.cpp
  * @par Project: engine
  * @author Ada Lovelace
- * @date 2026-10-09
+ * @date 2026-10-14
  * @brief Application entry point.
  */
 ```
 
-**SPDX first** puts the supplied license expression and optional copyright notice at the top. This choice appears only after you enter a license expression. For example, if you supply `MIT` and `2026 Ada Lovelace`:
+Python uses `#` lines. Lua uses `--` lines, or `---` for documentation style. C/C++, Rust, and Swift use `//` or block comments. These file headers describe metadata; language-native API comments remain separate. For C/C++ documentation generation, see [Doxygen](/docs/doxygen/).
 
-```cpp
-// SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: 2026 Ada Lovelace
-// File: main.cpp (engine)
-// Author: Ada Lovelace
-```
+## Preview and apply behavior
 
-Python's compact, Xcode-style, and SPDX headers use `#` lines; Lua uses `--` lines and `---` documentation lines; C/C++, Rust, and Swift use `//` or block comments. Selecting **No header** omits these file-header comments. C++ formatting can adjust them to the selected `clang-format` style; the final review shows the resulting text.
+Style previews use your supplied details. Navigate with `j`/`k`, switch to the preview with Tab, and select with Enter. Final reviews use `c` or Ctrl-S to apply. File-template previews use an example filename; the final review uses each actual generated filename.
 
-## Add or edit one file
+`:RivetHeader` prefills recognized fields from the existing header, including its original date. It preserves Python shebangs and encoding declarations, Lua shebangs, and Swift's leading tools-version directive. You can replace the leading standalone comment or prepend a header. Choosing replacement followed by **No header** removes that comment.
 
-Open a supported source file inside a generated project and run `:RivetHeader`. Project defaults prefill the inputs. Recognized fields in an existing header take precedence, including its original creation date. Python shebangs and encoding declarations, and Swift's leading tools-version directive, retain their required positions.
+Only an initial standalone comment block or consecutive comment lines are considered for replacement. Comments sharing a line with code and Lua long comments are preserved. A changed buffer invalidates an open review.
 
-If the file begins with a standalone comment after any required preamble, choose whether to replace that comment or keep it and prepend a header. Rivet shows a diff and the complete resulting file before approval. It considers only the initial C-style comment block or consecutive line comments (`//`, Python's `#`, or Lua's `--`); it does not search through the file for comments to remove. Lua long comments are preserved.
-
-Press `c` or Ctrl-S to update the buffer. Save with `:write`, or undo with `u`. Canceling a field or review leaves the buffer alone. If the buffer changes while the review is open, Rivet refuses the stale edit and asks you to start again.
-
-To remove a header, choose to replace the leading comment, then select **No header** and review the removal. Comments sharing a line with code are kept; Rivet will offer to add a separate header above them.
-
-## Change future defaults
-
-Run `:RivetHeaderDefaults` to change the project's saved details and style through the same inputs and previews. The final review updates `.rivet.json`. Existing source files keep their current headers; new files and targets use the new defaults.
-
-The Neovim commands provide the interactive header editor. The CLI's file and target generators also honor saved project header defaults, but there are no CLI header-editing flags.
-
-## Preview headers when adding files
-
-`:RivetFile` shows the configured header in the template picker for every supported source language. Python, Rust, and Swift use a **New source file** picker with one **Source file** choice before the path prompt; C/C++ and Lua show the header beside their existing template choices. That filename is an example; the final review renders every generated file with its actual filename, including both halves of a source/header or module interface/implementation pair.
-
-Files in another language use that language's comment syntax for the project's saved header details, such as Python's `#` or Lua's `--`. If no header is configured, including an ordinary folder without saved defaults, the preview says so. Set future-file defaults with `:RivetHeaderDefaults` in a Rivet-owned project; edit a single existing file with `:RivetHeader`.
-
-A Doxygen file header is the starting point. Add documentation for public functions and types, then generate HTML/XML as shown in [Document your API with Doxygen](/docs/doxygen/). Python, Rust, Swift, and Lua use their own comment conventions; a Doxygen integration for unsupported languages requires an explicit filter or adapter.
+Applying updates the buffer. Save with `:write` or undo with `u`; canceling leaves the buffer unchanged.

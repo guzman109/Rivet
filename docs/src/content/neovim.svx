@@ -1,47 +1,84 @@
 ---
-title: Neovim plugin
-description: Set up the editor interface and use previews, templates, and project tasks.
-section: Start here
+title: Use Rivet in Neovim
+description: Navigate project previews, run tasks, inspect errors, and control task output.
+section: How-to guides
 order: 2
-updated: '2026-10-13'
+updated: '2026-10-14'
 ---
 
-Rivet is a Neovim plugin for creating C/C++, Python, Rust, SwiftPM, and Lua projects, adding files from templates, and running native tasks. It requires Neovim 0.11 or newer and the Rivet plugin. Start with [installation and language selection](/docs/start-here/) if you have not loaded the plugin yet.
+[Install Rivet](/docs/start-here/#install-in-neovim) before using these commands. For a guided first project, choose a [language tutorial](/docs/start-here/#choose-your-first-project).
 
-Run `:RivetNew` after loading the plugin to create your first project. Follow the [C++](/docs/first-project/), [C](/docs/first-c-project/), [Python](/docs/first-python-project/), [Rust](/docs/first-rust-project/), [SwiftPM](/docs/first-swift-project/), or [Lua](/docs/first-lua-project/) walkthrough for your language.
+## Create and review
 
-## Use a local checkout
+Run `:pwd` to check Neovim's working directory, then `:RivetNew`. Choose a language and either **Current folder** to generate there or **New folder** to choose a new destination. The wizard collects project choices and shows the resulting files before creation.
 
-Add the checkout to your runtime path and initialize it. Replace `/path/to/rivet.nvim` with your checkout's actual location:
+| In the wizard                    | Action                                                 |
+| -------------------------------- | ------------------------------------------------------ |
+| `j` / `k`                        | Move through a preview list.                           |
+| Enter                            | Select an option.                                      |
+| Tab                              | Move focus between the list and preview.               |
+| Backspace                        | Return to the previous wizard question from a preview. |
+| `:back` at a text prompt         | Return to the previous question.                       |
+| `q` / Escape in a preview        | Cancel.                                                |
+| `c` / Ctrl-S in the final review | Apply the displayed file plan.                         |
 
-```lua
-vim.opt.runtimepath:prepend(
-  vim.fn.expand('/path/to/rivet.nvim')
-)
-require('rivet').setup({
-  default_preset = 'debug',
-})
+Inspect both paths and file contents in the final review. Existing destination files block creation, except for the reviewed `.gitignore` merge. Git initialization, if selected, reuses an existing repository or creates one without staging files or making a commit.
+
+![Final review showing generated source files before application](/images/neovim-review.png)
+
+Use `:RivetFile` to add a file to a project through the same review flow. See [Files and targets](/docs/templates/) for templates and target ownership, or [File comment headers](/docs/comment-headers/) for header personalization.
+
+## Work inside a project
+
+Open a source file beneath the project root, or change Neovim's working directory to it. Rivet discovers `.rivet.json` and supported native project markers; [Existing projects](/docs/existing-projects/) explains discovery without a Rivet manifest.
+
+Save your edits, then run a task:
+
+```vim
+:wall
+:RivetTask build
 ```
 
-New folders default to Neovim's current working directory. Optionally set `projects_dir` in `setup()` to a directory you choose; the wizard still lets you edit the destination. **Current folder** always uses Neovim's working directory, regardless of that setting. Run `:pwd` to check it and `:RivetDoctor` to open the plugin's health report.
+Choose a preset on the first task. For CMake projects, Build configures first; Run and Test configure and build first. Other providers use their native tools. Python and Lua Build check syntax. A failed or stopped step ends the workflow.
 
-With lazy.nvim, use the GitHub plugin specification:
+Use `:RivetTask run` to launch an application and `:RivetTask test` to run tests. Wait for each workflow to finish before starting the next.
+
+| To change a task choice                         | Command             |
+| ----------------------------------------------- | ------------------- |
+| Configure preset or native Debug/Release choice | `:RivetPreset`      |
+| Application to run                              | `:RivetRunTarget`   |
+| CMake build target                              | `:RivetBuildTarget` |
+| Arguments, environment, and hooks               | `:RivetRunOptions`  |
+| Inspect current presets and targets             | `:RivetStatus`      |
+| Repeat the last task with current choices       | `:RivetTask repeat` |
+
+Rivet remembers task selections per project across editor restarts. See [CMake and tasks](/docs/cmake/) for CMake preset controls and [Runtime options](/docs/task-options/) for launch settings.
+
+## Close and reopen task output
+
+Output streams into a reused window. Press `q` to close the view while keeping the task running, or Enter to close completed output. `:RivetOutput` reopens the project's latest output.
+
+Press Ctrl-C inside the output window or run `:RivetStop` to stop the local task and its process group. For remote jobs, see [Slurm cancellation](/docs/task-options/#slurm-examples).
+
+![CTest output in the plugin task window](/images/neovim-output.png)
+
+To close successful output automatically, include this setting in your existing setup call:
 
 ```lua
-{
-  'guzman109/Rivet',
-  name = 'rivet.nvim',
-  main = 'rivet',
-  version = '0.1.x',
-  opts = { default_preset = 'debug' },
-}
+require('rivet').setup({ task_output = 'close-on-success' })
 ```
 
-For local development, replace the repository entry with `dir = '/path/to/rivet.nvim'`. The [configuration reference](/docs/configuration/) lists every setup option, saved profiles, and identity behavior.
+Failed or cancelled tasks stay visible. Retained output remains available through `:RivetOutput`.
+
+## Follow an error
+
+When a task fails, read its output, then run `:copen`. Rivet collects supported compiler diagnostics and runtime error locations in quickfix. Select an entry and press Enter to jump to it; use `:cnext` and `:cprevious` to move between entries.
+
+Fix the problem, save, and run `:RivetTask repeat`. If a tool is missing or no diagnostic appears, use [Troubleshooting](/docs/troubleshooting/).
 
 ## Add a shortcut
 
-Commands work without key mappings. To add your own shortcut after setup:
+Commands work without mappings. To add a shortcut, put this after setup in your configuration:
 
 ```lua
 vim.keymap.set('n', '<leader>pn', '<cmd>RivetNew<cr>', {
@@ -49,99 +86,10 @@ vim.keymap.set('n', '<leader>pn', '<cmd>RivetNew<cr>', {
 })
 ```
 
-Choose a key that fits your configuration. The plugin does not install default mappings.
+Rivet does not install default mappings. Its commands are also subcommands of `:Rivet`, with Tab completion: for example, `:Rivet file` and `:Rivet task build`. Run `:help rivet` for the offline command reference.
 
-## Create and review
+## Use a local checkout
 
-Run `:RivetNew`, choose a language, then choose **New folder** to enter a name and destination, or **Current folder** to generate directly in `:pwd`. Current-folder mode suggests the folder name and lets you edit it, without adding another directory. C++ identifiers replace spaces and punctuation with underscores; names starting with a digit or matching a reserved word receive a `project_` prefix.
+Follow [local development setup](/docs/start-here/#local-development) to load a checkout.
 
-Choose **Initialize Git (reuse an existing repository)** to initialize a local repository after approving the file plan. Existing repositories, including enclosing repositories and worktrees, are reused. The review shows the Git action; initialization uses Git's configured default branch and does not stage files or create a commit.
-
-Every provider supplies a language-specific `.gitignore`: C/C++ build products, Python environments and caches, Cargo's `target/`, SwiftPM's `.build/` and `.swiftpm/`, or Lua caches and local LuaRocks files. Existing ignore rules are kept after the generated rules so their exceptions take precedence. Other generated-file collisions are refused. To work on a project that already has native configuration, follow [Existing projects](/docs/existing-projects/).
-
-For C++, choose C++17, C++20, C++23, or C++26 (the default), then a workload profile. **General** creates the core/application example; the [HPC](/docs/hpc/) and [graphics](/docs/graphics/) profiles add their own executables. C++17 uses headers; C++20 and newer offer named modules, with a separate choice of a single-file interface or split interface and implementation. `import std` is available from C++23 when the toolchain supports it.
-
-The wizard separates your own C++ interfaces from the standard library: choosing named modules does not automatically enable `import std;`. Standard-library headers remain the default.
-
-Compare project kinds, layouts, and formatting styles in the preview panels. Header guard preferences are also recorded for headers created later in a mixed project.
-
-For file comment headers, choose **Personalize and preview styles**. Enter optional credits, date, and other details first, then compare compact, Xcode-style, documentation, and SPDX styles using those answers. The final project review shows the headers in each generated file. See [File comment headers](/docs/comment-headers/) for all fields and editing behavior.
-
-In a preview list, use `j` and `k` to move, Enter to select, and Tab to move focus into the scrollable preview. Press Backspace in a wizard preview to revisit the previous question, or enter `:back` at a text prompt. Folder, Git, and header menus include a Back choice. Press `q` or Escape in previews to cancel. The final review shows every planned file and its content. Press `c` or Ctrl-S to apply that plan; no project files are written before application.
-
-For an `import std;` project, creation is followed by a choice to configure and build Debug immediately. This runs asynchronously and creates the compiled module artifacts needed by the compiler and clangd. Choosing Later leaves the files ready for `:RivetTask build`. If configure fails, the build stops and the generated files remain available for correction.
-
-## See the editor workflow
-
-These captures render Neovim's actual UI grid using the plugin, with a Catppuccin-colored editor palette.
-
-![C++ workload choices in the Neovim preview panel](/images/neovim-wizard.png)
-
-![Final review showing generated source files before application](/images/neovim-review.png)
-
-![Actual CTest output in the plugin task window](/images/neovim-output.png)
-
-## Work inside a project
-
-Open a file beneath a generated project's root, or change Neovim's working directory to it. Rivet finds an owning `.rivet.json` or the nearest supported native project marker, and remembers a project created during the session. Existing native projects do not need conversion. Outset-generated projects use the migration described below. See [Existing projects](/docs/existing-projects/).
-
-Every command is also a subcommand of `:Rivet`, with Tab completion: `:Rivet file`, `:Rivet build-preset`, `:Rivet task build`. Run `:help rivet` for the offline reference.
-
-| Command | Action |
-| --- | --- |
-| `:RivetFile` | Choose a language and source, header/pair, class, module/pair, or Lua module/script/embedding example. |
-| `:RivetFiles` | Review a registered file move, rename, or removal where supported. |
-| `:RivetConfig [tool]` | Edit common clang tool settings with explanations and a reviewed diff. |
-| `:RivetUpgrade` | Review supplementary templates from the installed Rivet version. |
-| `:RivetOutput` | Reopen the current project’s retained task output. |
-| `:RivetStop` | Stop its running task even while output is hidden. |
-| `:RivetModuleRename` | Review a C++ module identity change and registered imports. |
-| `:RivetRepair` | Back up an edited managed file and restore its generated snapshot. |
-| `:RivetRunOptions` | Review runtime arguments, environment, parallel settings, and hooks. |
-| `:RivetHeader` | Review an addition, edit, or removal of the current file's comment header. |
-| `:RivetHeaderDefaults` | Review header defaults for future project files. |
-| `:RivetTarget` | Add a provider-supported application/library; see [Files and targets](/docs/templates/). |
-| `:RivetDependency` | C++: register a pinned CPM package and its target linkage. |
-| `:RivetCMake` | Inspect and edit the selected build's CMake cache. |
-| `:RivetTask` | Choose a task; choose a preset the first time. |
-| `:RivetPreset` | Change the remembered CMake preset or native Debug/Release choice. |
-| `:RivetBuildPreset` / `:RivetTestPreset` | CMake: choose associated build/test presets. |
-| `:RivetBuildTarget` | CMake: choose a Build target, or use preset defaults. |
-| `:RivetStatus` | Show active presets and targets. |
-| `:RivetProfile` | Review and save reusable project choices. |
-| `:RivetIdentity` | Review and save optional local header details. |
-| `:RivetDoctor` | Inspect the selected provider's tools; [coverage varies by provider](/docs/troubleshooting/#what-doctor-checks). |
-| `:RivetRunTarget` | Change the remembered application target. |
-| `:RivetMigrate` | Review converting an Outset project to Rivet. |
-| `:RivetTask build` | Native build; Python and Lua check syntax, CMake configures first. |
-| `:RivetTask run` | Run the application through the provider's native workflow. |
-| `:RivetTask test` | Run the provider's test workflow. |
-| `:RivetTask repeat` | Repeat the previous task using current build choices. |
-
-For CMake, Build configures first and Test/Run configure and build first. Other providers sequence native tools; a failed or stopped step ends the workflow. Run prompts for an application when several exist. Recorded starter test executables are excluded; an existing CMake project's File API products can include test programs, so select the intended application. Preset, application, and last task are remembered per project across editor restarts in Neovim's local state directory.
-
-Output streams into a reused window: Ctrl-C stops the local task's process group, including compiler/application children, and `q` closes the output without stopping the task. [Runtime options](/docs/task-options/#slurm-examples) explains remote cancellation limits. C/C++, Swift, Cargo primary-span diagnostics, Python traceback locations, and Lua source errors appear in quickfix; use `:copen`, Enter, `:cnext`, and `:cprevious` to navigate them. Save edited sources before building.
-
-## Keep your language tools
-
-For C++ projects, Rivet generates `.clangd`, `.clang-format`, and `.clang-tidy`. It does not replace your LSP client, completion plugin, debugger, or formatter integration. After configure, `.cache/rivet/compile_commands.json` follows the selected build. Run through Rivet to refresh it, or configure your own `.clangd` database path when using CMake directly.
-
-For missing module diagnostics, follow [Troubleshooting](/docs/troubleshooting/). For cache controls and preset behavior, see [CMake and tasks](/docs/cmake/).
-
-## Language and workload guides
-
-Use [C interoperability](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/), [SwiftPM](/docs/swift/), or [Lua](/docs/lua/) for provider tasks. C++ also offers [HPC](/docs/hpc/) and [graphics](/docs/graphics/) profiles. All providers keep the same review/cancel flow.
-
-## Existing Outset setup
-
-Use `require('rivet').setup(...)` and `:Rivet…` commands in new configuration. The old `require('outset')` entry point still loads Rivet, shows a deprecation warning, and will be removed in 0.3.0. Open a project with `.outset.json` and run `:RivetMigrate` to review its conversion and backups before applying. Reconfigure afterward. Saved editor profiles and task selections are read from their former Outset location until they are next saved.
-
-## Close and reopen task output
-
-Running output displays `Ctrl-C stop · q close view · :Rivet output reopen`. Completed output displays `Press q or Enter to close`. Closing the view keeps output available and leaves a running process active; use Ctrl-C or `:RivetStop` to stop it. Each project retains its own latest output.
-
-```lua
-require("rivet").setup({ task_output = "close-on-success" })
-```
-
-This optional setting closes only successful final workflow output. Failed or cancelled tasks stay visible. `:RivetOutput` reopens retained output.
+For other setup options, see [Configuration](/docs/configuration/). If you have an Outset installation or project, follow [Upgrading and migration](/docs/upgrading/).

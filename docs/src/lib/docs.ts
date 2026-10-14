@@ -5,7 +5,7 @@ import { resolve } from '$app/paths';
 export interface DocMetadata {
 	title: string;
 	description: string;
-	section: 'Start here' | 'Guides' | 'Reference';
+	section: 'Start here' | 'Tutorials' | 'How-to guides' | 'Reference' | 'Explanation';
 	order: number;
 	updated: string;
 }
@@ -48,7 +48,13 @@ function headings(source: string): Heading[] {
 	});
 }
 
-export const sections = ['Start here', 'Guides', 'Reference'] as const;
+export const sections = [
+	'Start here',
+	'Tutorials',
+	'How-to guides',
+	'Reference',
+	'Explanation'
+] as const;
 
 export const docs: Doc[] = Object.entries(metadata)
 	.map(([path, meta]) => {

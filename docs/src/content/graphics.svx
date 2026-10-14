@@ -1,43 +1,31 @@
 ---
 title: Graphics profiles
-description: Configure Metal, native WebGPU, Vulkan, or OpenGL and verify the first rendered triangle.
-section: Guides
-order: 18
-updated: '2026-10-09'
+description: Backend prerequisites, generated targets, SDK configuration, and rendering test behavior.
+section: Reference
+order: 15
+updated: '2026-10-14'
 ---
 
-Each C++ graphics profile adds a triangle renderer, shaders, CMake rules, and a runtime pixel check alongside the ordinary core/application. It creates a starting point, not an engine, and does not download an SDK. [Install Rivet](/docs/start-here/) before following a walkthrough.
+C++ graphics profiles add a triangle renderer, shaders, and a runtime pixel test. The generated executable is `<name>_<profile>`; its CTest is `<name>_<profile>_runtime`. Project creation leaves SDK installation to you. For the common creation and task workflow, see [Your first C++ project](/docs/first-project/).
 
-## Choose a backend
+## Backends
 
 | Profile | Rendering path | Prerequisites |
 | --- | --- | --- |
-| Metal | Metal-cpp, compiled MSL, offscreen texture/readback | macOS, Xcode Metal tools, Metal-cpp headers |
-| WebGPU | Native Dawn C++ API, WGSL, offscreen render/readback | C++20+, installed Dawn CMake package |
-| Vulkan | Vulkan graphics pipeline, GLSL → SPIR-V, offscreen render/readback | Vulkan SDK with `glslc`; validation layers for Debug |
-| OpenGL | OpenGL 3.3 core, GLFW context and loaded functions, GLSL | GLFW 3.3+, OpenGL headers/library, working display/context |
+| `metal` | Metal-cpp, MSL, offscreen texture/readback | macOS, Xcode Metal tools, Metal-cpp headers |
+| `webgpu` | Native Dawn C++ API, WGSL, offscreen render/readback | C++20+, installed Dawn CMake package |
+| `vulkan` | Vulkan pipeline, GLSL compiled to SPIR-V, offscreen readback | Vulkan headers/loader and `glslc`; validation layers for Debug |
+| `opengl` | OpenGL 3.3 core context, GLFW, GLSL 330 | GLFW 3.3+, OpenGL development libraries, usable display/context |
 
-The examples use C++23 with conventional headers so module scanning is not another prerequisite. C++26 remains Rivet's general default. Choose another supported host standard when your compiler or SDK needs it; Dawn requires at least C++20.
-
-## Use these walkthroughs in Neovim
-
-1. In a parent directory you choose, make a folder with the example name below and open Neovim inside it.
-2. Run `:RivetNew`, select `cpp`, **Current folder**, your Git/header preferences, C++23, the chosen graphics profile, and **Application + reusable core**. Select **Headers and source files**, standard-library headers, and Ninja. Review and apply with `c`.
-3. Add the backend's local preset below to `CMakeUserPresets.json`. Replace every `/path/to/...` value with your installation path. If that file already exists, merge the preset into its `configurePresets` array; preserve existing compiler choices and other presets.
-4. Select **graphics-debug** with `:RivetPreset`, then run `:RivetTask configure`. Fix SDK discovery errors before continuing.
-5. Use `:RivetRunTarget` to select the backend executable named below, then `:RivetTask run` and `:RivetTask test`.
-
-The equivalent CLI sequences are provided for each backend. Run creates/builds the selected application; Test builds the project's tests. If a compiler or SDK changes, use a new preset name and build directory instead of reusing an incompatible CMake cache.
-
-## Metal
-
-Obtain Apple's headers from the [Metal-cpp guide](https://developer.apple.com/metal/cpp/), and install/select Xcode with its Metal tools. The header root must contain `Metal/Metal.hpp` and `Foundation/Foundation.hpp`. Verify `xcrun --find metal` resolves before configuring.
+The host standard and project-module choices are independent of the profile. This example selects C++23 with headers:
 
 ```sh
-rivet new metal_demo --profile metal --standard 23 --modules false
+rivet new graphics_demo --profile metal --standard 23 --modules false
 ```
 
-Create `metal_demo/CMakeUserPresets.json` with this preset, or merge the entry into an existing file:
+## Local SDK configuration
+
+SDK paths belong in a local configure preset. This Metal example can be added to `CMakeUserPresets.json`; merge with any existing presets and replace the paths:
 
 ```json
 {
@@ -54,132 +42,52 @@ Create `metal_demo/CMakeUserPresets.json` with this preset, or merge the entry i
 }
 ```
 
-```sh
-rivet configure --root metal_demo --preset graphics-debug
-rivet run --root metal_demo --preset graphics-debug --target metal_demo_metal
-rivet test --root metal_demo --preset graphics-debug
-```
+Other backends use the cache variables below. Select a compiler compatible with the SDK and use a new build directory when changing toolchains.
 
-A successful build compiles `shaders/triangle.metal` into `triangle.metallib`. Run prints `Metal center pixel: R,G,B` and exits 0 when readback passes; the red channel must exceed 150 and alpha must exceed 200. CTest should pass both the core test and `metal_demo_metal_runtime`. `No Metal device` means the runtime check could not execute; a missing shader library or pipeline error is a failure.
+| Backend | Discovery and relevant settings |
+| --- | --- |
+| Metal | `RIVET_METAL_CPP_DIR`: root containing `Metal/Metal.hpp` and `Foundation/Foundation.hpp`; `xcrun` supplies the Metal compiler |
+| WebGPU | `CMAKE_PREFIX_PATH`: installed Dawn prefix with `DawnConfig.cmake` and `dawn::webgpu_dawn` |
+| Vulkan | `CMAKE_PREFIX_PATH`: SDK prefix when needed; `Vulkan_GLSLC_EXECUTABLE`: shader compiler path |
+| OpenGL | `CMAKE_PREFIX_PATH`: GLFW installation prefix when it is outside normal search paths |
 
-Metal-cpp itself requires C++17 or later. SwiftUI app lifecycle, signing, simulator deployment, and previews stay in Xcode; [SwiftPM](/docs/swift/) provides the package handoff.
+## Metal
+
+The build compiles `shaders/triangle.metal` into `triangle.metallib`. Run prints `Metal center pixel: R,G,B`; the check requires red greater than 150 and alpha greater than 200. A missing Metal device returns 77; shader-library and pipeline errors fail.
+
+Apple's [Metal-cpp setup guide](https://developer.apple.com/metal/cpp/) provides the headers and toolchain requirements. `xcrun --find metal` must resolve before building.
 
 ## Native WebGPU
 
-Build/install a Dawn SDK using [Dawn's CMake quickstart](https://dawn.googlesource.com/dawn/+/refs/heads/main/docs/quickstart-cmake.md), or use a compatible prebuilt installation. The installation must export the CMake target `dawn::webgpu_dawn`; a source checkout alone is not an installed package. Pin its version because the native API changes.
+The profile links an installed Dawn package and uses its callback/future C++ API. A source checkout alone does not satisfy `find_package(Dawn CONFIG REQUIRED)`. See [Dawn's CMake quickstart](https://dawn.googlesource.com/dawn/+/refs/heads/main/docs/quickstart-cmake.md) for installation and exported targets.
 
-```sh
-rivet new webgpu_demo --profile webgpu --standard 23 --modules false
-```
-
-Add this local preset in `webgpu_demo/CMakeUserPresets.json`. Select a compiler compatible with your Dawn build:
-
-```json
-{
-  "version": 6,
-  "configurePresets": [{
-    "name": "graphics-debug",
-    "inherits": "debug",
-    "binaryDir": "${sourceDir}/build/graphics-debug",
-    "cacheVariables": {
-      "CMAKE_CXX_COMPILER": "/path/to/clang++",
-      "CMAKE_PREFIX_PATH": "/path/to/dawn-install"
-    }
-  }]
-}
-```
-
-```sh
-rivet configure --root webgpu_demo --preset graphics-debug
-rivet run --root webgpu_demo --preset graphics-debug --target webgpu_demo_webgpu
-rivet test --root webgpu_demo --preset graphics-debug
-```
-
-Run should print `WebGPU center pixel: R,G,B` and exit 0 after rendering and reading back the WGSL triangle. The red/alpha thresholds are the same as Metal. CTest should pass the core and `webgpu_demo_webgpu_runtime` tests. A missing `DawnConfig.cmake` means the prefix does not point to a usable installed package. No adapter, or a null backend, makes the runtime unavailable; a null backend does not count as rendering evidence.
-
-This profile uses native C++/WGSL and the callback/future API. A browser build needs a separate web toolchain, canvas lifecycle, asset hosting, and deployment workflow.
+Run prints `WebGPU center pixel: R,G,B` and checks the same red/alpha thresholds as Metal. No adapter or a null backend returns 77. Device creation, shader loading, and readback failures fail. Browser builds require a separate web toolchain and application integration.
 
 ## Vulkan
 
-Install the [Vulkan SDK](https://vulkan.lunarg.com/) for your platform, including `glslc` and validation layers. Activate the SDK's supplied environment setup before launching Neovim or the CLI so the loader can find its drivers and layers. On macOS this includes the SDK's MoltenVK configuration; a CMake prefix alone does not set up the runtime loader.
+The build uses `glslc` to compile the GLSL shaders to SPIR-V. Run prints `Vulkan center pixel: R,G,B` and checks red greater than 150 and alpha greater than 200. Debug requires `VK_LAYER_KHRONOS_validation` and fails on reported validation errors; Release does not enable that layer.
 
-```sh
-rivet new vulkan_demo --profile vulkan --standard 23 --modules false
-```
+An incompatible driver, missing physical device, or missing graphics queue returns 77. Other Vulkan errors fail. The starter enables portability enumeration and the portability-subset extension when advertised.
 
-Add this local preset in `vulkan_demo/CMakeUserPresets.json`, with paths to the platform's SDK installation:
-
-```json
-{
-  "version": 6,
-  "configurePresets": [{
-    "name": "graphics-debug",
-    "inherits": "debug",
-    "binaryDir": "${sourceDir}/build/graphics-debug",
-    "cacheVariables": {
-      "CMAKE_CXX_COMPILER": "/path/to/clang++",
-      "CMAKE_PREFIX_PATH": "/path/to/vulkan-sdk",
-      "Vulkan_GLSLC_EXECUTABLE": "/path/to/vulkan-sdk/bin/glslc"
-    }
-  }]
-}
-```
-
-```sh
-rivet configure --root vulkan_demo --preset graphics-debug
-rivet run --root vulkan_demo --preset graphics-debug --target vulkan_demo_vulkan
-rivet test --root vulkan_demo --preset graphics-debug
-```
-
-The build compiles GLSL to SPIR-V. A successful runtime should print `Vulkan center pixel: R,G,B`, pass the red/alpha checks, and exit 0. CTest should pass the core and `vulkan_demo_vulkan_runtime` tests. Debug requires `VK_LAYER_KHRONOS_validation`; missing layers and validation errors fail the check. Release omits validation, so its success does not establish a clean validation run. Missing compatible drivers/devices can skip runtime coverage.
-
-Apple builds enable portability enumeration and the portability-subset extension when advertised. [MoltenVK](https://github.com/KhronosGroup/MoltenVK) implements a Vulkan subset over Metal; do not assume every Vulkan feature is available. [CMake's Vulkan discovery](https://cmake.org/cmake/help/latest/module/FindVulkan.html) describes SDK variables.
-
-Full Vulkan shader compilation, validation layers, and runtime rendering remain unverified in the recorded local test environment; this walkthrough describes the generated workflow and must be qualified on your Vulkan host.
+The loader, drivers, and layers must be available in the runtime environment. On macOS, a MoltenVK installation supplies Vulkan over Metal. See [CMake Vulkan discovery](https://cmake.org/cmake/help/latest/module/FindVulkan.html) and the [MoltenVK user guide](https://github.com/KhronosGroup/MoltenVK/blob/main/Docs/MoltenVK_Runtime_UserGuide.md) for their respective setup.
 
 ## OpenGL
 
-Install GLFW 3.3+ and your platform's OpenGL development libraries. Use a working graphical session; even the hidden test window needs a context. Follow [GLFW's build instructions](https://www.glfw.org/docs/latest/compile.html) or use your system's packaged installation.
+Run opens a GLFW window and continues until it closes. CTest passes `--test`, which selects a hidden window and an automatic exit. The generated program currently treats any argument as test mode.
+
+The pixel check requires red greater than 150 and no OpenGL error. It prints no center-pixel line. GLFW initialization or context creation failure returns 77; shader and pixel errors fail. A hidden window still needs a usable context. The starter loads functions with `glfwGetProcAddress`, as described in [GLFW's context guidance](https://www.glfw.org/docs/latest/quick_guide.html).
+
+## Tasks and test results
+
+For the Metal example above:
 
 ```sh
-rivet new opengl_demo --profile opengl --standard 23 --modules false
+rivet run --root graphics_demo --preset graphics-debug --target graphics_demo_metal
+rivet test --root graphics_demo --preset graphics-debug
 ```
 
-Add this local preset in `opengl_demo/CMakeUserPresets.json`:
+Run and Test configure and build first. In Neovim, `:RivetPreset` selects the configuration and `:RivetRunTarget` selects the profile executable.
 
-```json
-{
-  "version": 6,
-  "configurePresets": [{
-    "name": "graphics-debug",
-    "inherits": "debug",
-    "binaryDir": "${sourceDir}/build/graphics-debug",
-    "cacheVariables": {
-      "CMAKE_CXX_COMPILER": "/path/to/clang++",
-      "CMAKE_PREFIX_PATH": "/path/to/glfw-install"
-    }
-  }]
-}
-```
+CTest marks return code 77 as **Skipped** and can still exit successfully overall. Check the named runtime test to establish that rendering ran. Compilation, shader/pipeline, and pixel-check errors remain failures. Doctor checks prerequisites without rendering a frame.
 
-```sh
-rivet configure --root opengl_demo --preset graphics-debug
-rivet run --root opengl_demo --preset graphics-debug --target opengl_demo_opengl
-rivet test --root opengl_demo --preset graphics-debug
-```
-
-Run opens a GLFW window containing the triangle; close it to return to the editor. CTest passes `--test` to use a hidden window, verify a red center pixel, and exit automatically. Expect both the core and `opengl_demo_opengl_runtime` tests to pass. This backend does not print a center-pixel line. Missing GLFW/context reports unavailable runtime; shader compilation/link errors and an incorrect pixel fail.
-
-The starter requests a forward-compatible OpenGL 3.3 core context, loads functions with `glfwGetProcAddress`, and uses GLSL 330. OpenGL is deprecated on macOS; the profile supports existing GL work and portability experiments. [GLFW context and loader guidance](https://www.glfw.org/docs/latest/quick_guide.html).
-
-## Change a shader and verify again
-
-Edit a shader under `shaders/`, save, and repeat Run or Test. Builds compile or copy shader resources again as needed. The pixel check expects a sufficiently red triangle; changing its color can require an intentional change to the corresponding assertion in `examples/<backend>/main.cpp`.
-
-The starter loads resources from its configured build directory. Copying only the executable elsewhere is not a packaging workflow.
-
-## Read pass, skip, and failure correctly
-
-A runtime test executable returning 77 is marked **Skipped** by CTest. CTest itself may still exit 0 and print a successful aggregate percentage. Inspect the named runtime test: a passing core test plus a skipped GPU test is not verified rendering. Compilation, shader/pipeline, or pixel-check failures remain failures. Doctor checks prerequisite information; it does not render a frame.
-
-[Compatibility](/docs/compatibility/#additional-local-verification) records the actual tested combinations separately from these instructions. The recorded Metal run used Apple's Metal-cpp commit `27c4382b7151d55a51692cdcb27aaa98752240de`; Dawn used release `v20261008.181332` (`b73d662f73d57bb42209546910666a38e6db95a1`). Both passed readback on macOS, and GLFW 3.4 passed the hidden-window test. Vulkan currently has C++17 syntax coverage against Khronos headers, not a verified full runtime.
+Shaders live under `shaders/`; builds compile or copy changed resources as needed. Pixel assertions live in `examples/<profile>/main.cpp`. A deliberate color change may require updating the assertion. Resources are loaded from the configured build directory, so deployment must include them and adapt their paths. See [Compatibility](/docs/compatibility/) for verification scope.

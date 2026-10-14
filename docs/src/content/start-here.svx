@@ -3,14 +3,14 @@ title: Install and choose a language
 description: Install Rivet through your plugin manager, check your tools, and choose a first project.
 section: Start here
 order: 1
-updated: '2026-10-13'
+updated: '2026-10-14'
 ---
 
-Rivet creates projects and runs their native tools from Neovim. Start with one language and one successful run; graphics SDKs, modules, and cluster hooks can come afterward. The CLI is optional.
+Rivet creates projects and runs their native tools from Neovim. Install the plugin, then choose a tutorial for your language. The terminal CLI is optional.
 
 ## Install in Neovim
 
-Use Neovim 0.11+ on macOS or Linux. Your plugin manager downloads Rivet; you do not need to clone the repository manually or compile the plugin.
+Use Neovim 0.11+ on macOS or Linux, with Git available to your plugin manager. Choose one of the installation methods below.
 
 With Neovim 0.12+'s built-in package manager, add this to your configuration:
 
@@ -39,11 +39,32 @@ With lazy.nvim on Neovim 0.11+, use this plugin specification:
 
 Restart Neovim after adding the plugin to your configuration. The version range follows patch releases in the 0.1 series. Both managers store the installed revision in a lockfile.
 
-To pin one release, replace the range with `version = 'v0.1.0'` for `vim.pack`, or use `tag = 'v0.1.0', version = false` for lazy.nvim. To follow development, use `version = 'main'` for `vim.pack`, or `branch = 'main', version = false` for lazy.nvim. Changing this selection for an already installed plugin also requires the update operation below; restarting alone does not change its installed revision. See [Neovim package specifications](https://neovim.io/doc/user/pack.html#vim.pack.Spec) and [lazy.nvim version selection](https://lazy.folke.io/spec#spec-versioning).
+For other version choices, see [Neovim package specifications](https://neovim.io/doc/user/pack/#vim.pack.Spec) or [lazy.nvim version selection](https://lazy.folke.io/spec/versioning).
+
+Run `:RivetDoctor` to confirm that the command is available. If Neovim does not recognize it, check that the plugin and setup call have loaded. The report checks available tools; a successful build and test verifies the project workflow.
+
+## Choose your first project
+
+| Language | Tools for the first run                                                                                              | Follow next                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| C++      | CMake 3.30+, Ninja 1.11+, compiler supporting your chosen standard; modules also need compatible dependency scanning | [C++ first project](/docs/first-project/)                |
+| C        | CMake 3.30+, Ninja, C17 compiler                                                                                     | [Your first C project](/docs/first-c-project/)           |
+| Python   | Python 3.11+                                                                                                         | [Your first Python project](/docs/first-python-project/) |
+| Rust     | Cargo and Rust 1.85+ for edition 2024                                                                                | [Your first Rust project](/docs/first-rust-project/)     |
+| Lua      | Lua 5.1+ for the application tutorial                                                                                | [Your first Lua project](/docs/first-lua-project/)       |
+| Swift    | Swift 6.0+ with SwiftPM                                                                                              | [Your first Swift project](/docs/first-swift-project/)   |
+
+The C++ tutorial uses C++26 and named modules. For a C++20 build using conventional headers, use the [CLI example](/docs/getting-started/#create-a-first-project).
+
+Each tutorial creates an application, adds code, and tests the result. See [Compatibility](/docs/compatibility/) for tested toolchains and [Doctor coverage](/docs/doctor/) for what the health check verifies.
+
+## Already have a project?
+
+Open a file inside your existing CMake, Python, Cargo, SwiftPM, or configured Lua project and use `:RivetTask`. You do not need to create a Rivet manifest to use its native tasks. Follow [Existing projects](/docs/existing-projects/) for discovery and target selection. [How Rivet works with your project](/docs/project-model/) explains file ownership and native tools.
 
 ## Update the plugin
 
-For `vim.pack`, run `:lua vim.pack.update({ 'rivet.nvim' })`, review the proposed update, save it with `:write`, then restart Neovim. For lazy.nvim, use `:Lazy update rivet.nvim`. Publication of a release does not automatically change an installed plugin.
+For `vim.pack`, run `:lua vim.pack.update({ 'rivet.nvim' })`, review the changes, and confirm with `:write`. For lazy.nvim, use `:Lazy update rivet.nvim`. Restart Neovim afterward. See the [vim.pack update workflow](https://neovim.io/doc/user/pack/#vim.pack-examples) and [lazy.nvim commands](https://lazy.folke.io/usage).
 
 After updating Rivet, review `:RivetUpgrade` separately in each generated project. That command updates supplementary templates while preserving local edits; it does not update the plugin itself. See [project upgrades](/docs/upgrading/) and the [changelog](https://github.com/guzman109/Rivet/blob/main/CHANGELOG.md).
 
@@ -60,31 +81,4 @@ vim.opt.runtimepath:prepend('/absolute/path/to/rivet.nvim')
 require('rivet').setup()
 ```
 
-For the optional CLI, download and extract the source archive from [GitHub releases](https://github.com/guzman109/Rivet/releases), then add its `bin/` directory to your `PATH`. The launcher is `bin/rivet`; it needs Lua 5.1+ or LuaJIT. The archive contains portable source, not a compiled standalone binary. Keep the extracted folder intact so the launcher can find its Lua modules.
-
-Run `:RivetDoctor`. If Neovim says the command does not exist, check the checkout path and restart after loading the configuration. No separate Lua installation is needed inside Neovim. The [Neovim guide](/docs/neovim/) covers keys, commands, and previews; the [CLI quick start](/docs/getting-started/) explains the optional terminal interface.
-
-## Choose your first project
-
-| Language | Tools for the first run | Follow next |
-| --- | --- | --- |
-| C++ | CMake 3.30+, Ninja 1.11+, compiler supporting your chosen standard; modules also need compatible dependency scanning | [C++ first project](/docs/first-project/) |
-| C | CMake 3.30+, Ninja, C compiler supporting C17 (default), C11, or C23 | [Your first C project](/docs/first-c-project/) |
-| Python | Python 3.11+; uv only if you choose it | [Your first Python project](/docs/first-python-project/) |
-| Rust | Cargo and rustc supporting edition 2024 (default) or 2021 | [Your first Rust project](/docs/first-rust-project/) |
-| Lua | Lua 5.1+ or LuaJIT for portable apps; Neovim for plugin projects | [Your first Lua project](/docs/first-lua-project/) |
-| Swift | Swift 6.0+ with SwiftPM; Xcode for Apple application work | [Your first Swift project](/docs/first-swift-project/) |
-
-C++26 remains the default. The C++ tutorial uses named modules; conventional headers are also supported in C++17/20/23/26. For a simpler first build without module scanning, choose **Headers and source files** or use the [C++ CLI example](/docs/getting-started/#create-a-first-project).
-
-Each walkthrough creates a project in a folder you choose, explains the expected result, and shows how to run its test. Doctor reports checks it can perform; a successful build and test verifies the actual workflow. See [Compatibility](/docs/compatibility/) for tested combinations and [Doctor coverage](/docs/troubleshooting/#what-doctor-checks) for its limits.
-
-## Already have a project?
-
-Open a file inside your existing CMake, Python, Cargo, SwiftPM, or configured Lua project and use `:RivetTask`. You do not need to create a Rivet manifest to use its native tasks. Follow [Existing projects](/docs/existing-projects/) for discovery and target selection.
-
-For your next step, use [parallel computing and CUDA](/docs/hpc/) or [graphics profiles](/docs/graphics/). Those guides keep SDK setup, compilation, and runtime validation separate.
-
-## Document your first API
-
-For C/C++, choose **Doxygen documentation** while personalizing file headers. Add documentation to public declarations as you add code, then generate HTML for readers and XML for documentation tools. The [Doxygen guide](/docs/doxygen/) explains the workflow and the language adapters needed outside Doxygen’s native support. Each first-project walkthrough includes its language’s documentation path.
+For the optional terminal interface, follow [Use the CLI](/docs/getting-started/). It needs a separate Lua 5.1+ or LuaJIT interpreter; the Neovim plugin uses Neovim’s bundled Lua runtime.

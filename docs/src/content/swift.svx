@@ -1,53 +1,46 @@
 ---
 title: Swift packages and Xcode
-description: Build SwiftPM executables and libraries, then hand Apple application work to Xcode.
-section: Guides
-order: 21
-updated: '2026-10-13'
+description: SwiftPM project structure, task mappings, target ownership, and Xcode integration.
+section: Reference
+order: 12
+updated: '2026-10-14'
 ---
 
-Choose Swift in `:RivetNew` for a SwiftPM executable or library. Generated packages use Swift tools version 6.0, a reusable core target, and XCTest coverage. Applications depend on the core target.
+The Swift provider creates SwiftPM applications and libraries with tools version 6.0. Follow [Your first Swift project](/docs/first-swift-project/) for a guided build and test.
 
-## First run in Neovim
+## Generated package
 
-[Load Rivet](/docs/start-here/) and use a Swift 6.0+ toolchain with SwiftPM. Create a folder in a parent directory you choose:
+| Component | Location and behavior |
+| --- | --- |
+| Core target | `Sources/<name>Core/Core.swift`; exports `sum` |
+| Application | Optional `Sources/<name>/main.swift`; uses the core and prints `42` |
+| Tests | `Tests/<name>Tests/CoreTests.swift`; XCTest checks addition and cancellation to zero |
+| Manifest | `Package.swift`; declares products, targets, and their dependencies |
 
-```sh
-mkdir personal_tool
-cd personal_tool
-nvim
-```
+## Tasks
 
-1. Run `:RivetNew`, choose **New choices** if offered, then select `swift`, **Current folder**, and `personal_tool`.
-2. Choose Git and header preferences, then **Application**. Review `Package.swift`, sources, and tests; press `c` to create them.
-3. Open `Sources/personal_tool/main.swift`. Run `:RivetTask run`, select Debug, and expect `42`.
-4. Run `:RivetTask test`. The XCTest correctness test should pass. SwiftPM may print additional test-runner summaries.
-5. Run `:RivetFile`, select **swift**, choose **Source file** after checking the header preview, name it `Feature`, and select `personal_toolCore`. Add implementation under that target, save, and repeat Build or Test. SwiftPM automatically includes sources in the target directory.
+| Rivet task | Swift operation |
+| --- | --- |
+| Configure | `swift package describe` |
+| Check / Build | `swift build` |
+| Test | `swift test` |
+| Run | `swift run` for the selected executable product |
+| Format | `swift format format --in-place --recursive` over `Sources/` and `Tests/` |
+| Lint | `swift format lint --strict --recursive` over `Sources/` and `Tests/` |
+| Xcode | On macOS, open `Package.swift` in Xcode |
 
-For a diagnostic, temporarily misspell `sum` in `main.swift`, save, and Build. Open `:copen`, fix the selected error, and `:RivetTask repeat`. Use `:RivetTask xcode` on macOS to continue in Xcode.
+Build, Check, Test, and Run use the selected Debug/Release configuration. Format and Lint require a toolchain providing `swift format`. Compiler file/line diagnostics populate quickfix.
 
-The equivalent optional CLI workflow is:
+Executable discovery uses `swift package describe --type json`. SwiftPM can compile and evaluate `Package.swift` during discovery. See the [SwiftPM library workflow](https://www.swift.org/getting-started/library-swiftpm/) for native build and test commands.
 
-```sh
-rivet new personal_tool --language swift --kind app
-rivet test --root personal_tool
-rivet run --root personal_tool
-```
+## Source and target ownership
 
-The core exports `sum`; tests check positive inputs and cancellation to zero. Run prints `42`. The local suite exercised both executable and library packages with Apple Swift 6.4.
+`:RivetFile` adds a source under a recorded target's conventional `Sources/<target>/` or `Tests/<target>/` directory. It preserves `Package.swift`. SwiftPM includes sources in those target directories; files placed elsewhere need corresponding native manifest configuration.
 
-## Native tasks and targets
+`:RivetTarget` adds an executable or library by regenerating `Package.swift`. It refuses a manifest edited outside Rivet. For a customized package, add products and targets directly in the manifest; native tasks discover them. [Swift package recovery](/docs/troubleshooting/#swift-package-customization) describes restoring a generated manifest when that is intentional.
 
-Configure asks SwiftPM to describe the package. Build and Check run `swift build`; Test runs `swift test`. Debug/Release select the native configuration. `swift package describe --type json` supplies the executable product list. [SwiftPM library workflow](https://www.swift.org/getting-started/library-swiftpm/).
+Existing `Package.swift` projects work without `.rivet.json`. Dependencies, custom source paths, platform settings, and lockfiles remain under SwiftPM's control.
 
-`:RivetFile` adds a Swift source to a recorded target's conventional `Sources/<target>` or `Tests/<target>` directory. It preserves `Package.swift`, including custom dependencies and platform settings. If you change target names or source paths in the native manifest, create files in those new locations yourself; Rivet's recorded target list does not infer that restructuring.
+## Xcode integration
 
-`:RivetTarget` adds an executable or library by regenerating `Package.swift`. It refuses a manifest edited outside Rivet. For a customized package, add products and targets directly in `Package.swift`; native tasks discover them. Use [Swift package recovery](/docs/troubleshooting/#swift-package-customization) only when you deliberately want to restore the generated package. Restoration is not a merge of custom dependencies or platform settings.
-
-Format and Lint use the toolchain's `swift format`; a toolchain without it needs an explicit installation/update. Swift compiler file/line diagnostics populate quickfix. SwiftPM may evaluate and compile the package manifest during discovery; it remains the authority for package semantics.
-
-## Hand off to Xcode
-
-On macOS, `:RivetTask xcode` opens `Package.swift` in Xcode. Use packages for reusable logic and testable components; use Xcode for SwiftUI application targets, signing, simulators, previews, and platform deployment. Rivet does not generate or rewrite an Xcode project.
-
-Existing `Package.swift` projects work without a Rivet manifest. Use SwiftPM or edit the native manifest for dependencies. Your existing package structure and lockfile remain authoritative. [SwiftUI](https://developer.apple.com/swiftui/).
+`:RivetTask xcode` opens the package on macOS. Apple application targets, signing, simulators, and SwiftUI previews belong in the Xcode application project. Rivet generates the Swift package only.

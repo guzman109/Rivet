@@ -1,12 +1,12 @@
 ---
 title: Files and targets
 description: Choose file and target operations for each language, with detailed C++ templates and CMake registration.
-section: Guides
-order: 12
-updated: '2026-10-13'
+section: Reference
+order: 4
+updated: '2026-10-14'
 ---
 
-Use `:RivetFile` or `rivet file` in a project or an ordinary folder. In an ordinary folder without a project marker, give the CLI `--root .` to select the destination. The editor asks for the language first, then the file arrangement. A file in the project’s primary language uses its provider’s build registration; other languages create tracked files without changing the host build. Use `--language` for the same choice in the CLI. Every operation previews its files before Neovim applies them. The build-system changes depend on the provider:
+`:RivetFile` and `rivet file` create source files; `:RivetTarget` and `rivet target` add targets. Neovim reviews the changes before applying them; CLI commands provide `--preview`. The selected language determines the available operations:
 
 | Provider | File addition | Target addition |
 | --- | --- | --- |
@@ -17,9 +17,9 @@ Use `:RivetFile` or `rivet file` in a project or an ordinary folder. In an ordin
 | Lua | Reusable module or runnable script | Library or script executable |
 | Swift | `.swift` source in a recorded target directory; leaves `Package.swift` intact | Executable or library through a reviewed package-manifest update |
 
-The sections below cover **C++**. Follow [C](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/), or [SwiftPM](/docs/swift/) for their source conventions and native ownership limits. Existing projects without `.rivet.json` can create files through the generic templates without generating a manifest or rewriting their build. Register these files with the native build yourself. See [Lua](/docs/lua/) for applications, Neovim plugins, scripting, and an optional embedded-runtime example.
+The remaining sections describe **C++**. See [C](/docs/c/), [Python](/docs/python/), [Rust](/docs/rust/), [Lua](/docs/lua/), and [SwiftPM](/docs/swift/) for their provider details. Existing projects without `.rivet.json` use generic file templates and retain their native build configuration. In a folder without a project marker, CLI file operations need `--root .`.
 
-## Choose a template
+## C++ template kinds
 
 | Kind | Generated files |
 | --- | --- |
@@ -39,37 +39,30 @@ The source/header choice is explicit: select `pair` when you want both. Module t
 Inside an application project named `engine`:
 
 ```sh
-rivet file src/memory/page --kind pair \
-  --target engine_core --preview
-
-rivet file src/memory/page --kind pair \
-  --target engine_core
-
+rivet file src/memory/page --kind pair --target engine_core
 rivet file Renderer --kind class --target engine_core
 ```
 
-Preview inspects the complete plan without writing. Omit it to apply the CLI operation. Neovim always presents the review before applying a template.
-
-## Understand names and paths
+## Names and paths
 
 A bare name such as `Renderer` goes in the selected target's source directory. A name containing `/`, such as `src/memory/page`, is relative to the project root. Extensions are optional. Absolute paths, traversal, invalid identifiers, and duplicate tracked paths are rejected; existing destination files are not overwritten.
 
 In the public-library layout, a bare header, pair, or class name puts the public header under `include/<project>/` and the implementation in the target's source directory. Additional static libraries use `include/<project>/<target>/`. An explicit relative path preserves the requested co-location.
 
-Header guards use the project's `pragma` or `ifndef` preference. Named module units do not use header guards. In standard-library module mode, source templates place `import std;` after local includes, and module units place it after their module declaration.
+C++ headers use the project's `pragma` or `ifndef` preference. Mixed-C headers (`c_header` and `c_pair`) currently use `#pragma once`. Named module units have no header guards. In standard-library module mode, source templates place `import std;` after local includes, and module units place it after their module declaration.
 
-New sources, headers, and module units also inherit the project's optional [file comment header](/docs/comment-headers/), with their own filename. The file-kind picker previews that header; Python, Rust, and Swift show a single **Source file** choice before asking for the path. Foreign-language files render the saved details using the selected language's comment syntax. An ordinary folder without header defaults shows an explicit not-configured message. `:RivetHeader` changes one file; `:RivetHeaderDefaults` changes what future templates use in a Rivet-owned project.
+New files inherit the project's optional [comment header](/docs/comment-headers/), rendered with the filename and selected language's comment syntax. The file-kind picker previews it. `:RivetHeader` changes one file; `:RivetHeaderDefaults` changes future templates in a Rivet-owned project.
 
-## Add a module pair or a separate implementation
+## Module interfaces and implementations
 
-Choose **Module interface + implementation** to create both together:
+`module_pair` creates an interface and implementation together:
 
 ```sh
 rivet file src/memory/pool --kind module_pair \
   --module engine.memory.pool --target engine_core
 ```
 
-Alternatively, create the interface first and add its implementation later. Use these commands instead of the pair above; the same module name and destination cannot be created twice:
+Separate creation uses `module` followed by `module_impl`. This is an alternative to the pair example above:
 
 ```sh
 rivet file src/memory/pool --kind module \
@@ -81,7 +74,7 @@ rivet file src/memory/pool_impl --kind module_impl \
 
 The `module` command creates an interface skeleton. Put function bodies there for a single-file module, or declarations there and definitions in the `module_impl` file. Do not define the same function in both. The implementation must refer to an existing module and belong to its owning target. In Neovim, selecting the module automatically selects that target. The declaration and definition syntax is explained in [Modules and headers](/docs/modules/).
 
-## Add a build target
+## Build targets
 
 An application scaffold named `engine` creates `engine_core`, `engine`, and `engine_test`. A library scaffold creates `engine` and `engine_test`.
 
@@ -90,7 +83,7 @@ rivet target renderer --kind library --link-to engine
 rivet target viewer --kind app
 ```
 
-The first command creates a static library and links the existing `engine` target to it. The second creates an independent executable. Adding a target does not automatically move existing files or infer application dependencies. Use the final CMake review to inspect the relationships, and keep custom build extensions in `CMakeLists.txt`.
+`--link-to engine` makes the existing `engine` target consume the new static library. The second command creates an independent executable. Target creation leaves existing files in place; custom dependencies and build extensions belong in `CMakeLists.txt`.
 
 ## Files in another language
 
