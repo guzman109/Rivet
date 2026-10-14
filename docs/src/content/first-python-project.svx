@@ -143,4 +143,11 @@ def greeting(name: str) -> str:
     return f"Hello, {name}!"
 ```
 
-Run `doxygen Doxyfile` and open `docs/api/html/index.html`. Review the generated API pages as you change your source. Rivet's file headers do not generate this site or replace function docstrings; Doxygen remains a separate command. You can ignore `/docs/api/` in Git while keeping `Doxyfile` and your documented source. The [Doxygen getting-started guide](https://www.doxygen.nl/manual/starting.html) covers generating and running that configuration.
+Create the output directory and generate the reference:
+
+```sh
+mkdir -p docs/api
+doxygen Doxyfile
+```
+
+Open `docs/api/html/index.html` and review the generated API pages as you change your source. Rivet's file headers do not generate this site or replace function docstrings; Doxygen remains a separate command. You can ignore `/docs/api/` in Git while keeping `Doxyfile` and your documented source. The [Doxygen getting-started guide](https://www.doxygen.nl/manual/starting.html) covers generating and running that configuration.

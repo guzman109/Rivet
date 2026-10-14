@@ -115,7 +115,14 @@ Add an `@file` comment to a header if it does not already have one, and document
 int rivet_add(int a, int b);
 ```
 
-Run `doxygen Doxyfile`, then open `docs/api/html/index.html` in your browser. Add `/docs/api/` to `.gitignore` if you keep generated documentation out of source control. These commands run Doxygen directly; Rivet does not install it or generate a Doxyfile automatically. The official [getting-started guide](https://www.doxygen.nl/manual/starting.html), [comment syntax](https://www.doxygen.nl/manual/docblocks.html), and [C output setting](https://www.doxygen.nl/manual/config.html#cfg_optimize_output_for_c) explain the configuration.
+Create the output directory and generate the reference:
+
+```sh
+mkdir -p docs/api
+doxygen Doxyfile
+```
+
+Then open `docs/api/html/index.html` in your browser. Add `/docs/api/` to `.gitignore` if you keep generated documentation out of source control. These commands run Doxygen directly; Rivet does not install it or generate a Doxyfile automatically. The official [getting-started guide](https://www.doxygen.nl/manual/starting.html), [comment syntax](https://www.doxygen.nl/manual/docblocks.html), and [C output setting](https://www.doxygen.nl/manual/config.html#cfg_optimize_output_for_c) explain the configuration.
 
 ## Keep iterating
 

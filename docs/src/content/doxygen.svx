@@ -84,7 +84,7 @@ For a renderer or documentation application, use this flow:
 3. Give the complete XML directory and project/revision identity to the consumer.
 4. Inspect the rendered API, then publish it with the corresponding release.
 
-For links between two Doxygen-generated sites, use tag files instead of importing XML. One project emits `GENERATE_TAGFILE`; the other sets `TAGFILES = path/to/engine.tag=https://your-docs-host/engine/`. The URL must match the published HTML location. See [linking to external documentation](https://www.doxygen.nl/manual/external.html).
+For links between two Doxygen-generated sites, use tag files instead of importing XML. One project emits `GENERATE_TAGFILE`; the other sets `TAGFILES = path/to/engine.tag=https://your-docs-host/engine/`. The URL must match the published HTML location. Document containing public namespaces too, for example with `/** @brief Public engine API. */` above `export namespace engine`. With `EXTRACT_ALL = NO`, an undocumented namespace can leave its functions out of the tag file even when they appear in HTML and XML. Inspect the expected symbols before using the tag file. See [linking to external documentation](https://www.doxygen.nl/manual/external.html).
 
 This keeps your code project usable independently while giving a documentation tool a repeatable input. Rivet does not assume a particular external renderer or invoke one automatically.
 
