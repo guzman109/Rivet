@@ -655,11 +655,9 @@ pre code {
 }
 .doc-page {
 	display: grid;
-	grid-template-columns: minmax(0, 740px) 180px;
-	gap: 55px;
-	padding: 48px 52px;
-	max-width: 1130px;
-	margin: auto;
+	grid-template-columns: minmax(0, 1fr) 180px;
+	gap: 36px;
+	padding: 48px 24px 48px 48px;
 	align-items: start;
 }
 .doc-main {
@@ -785,6 +783,9 @@ pre code {
 	background: var(--mantle);
 	color: var(--text);
 	font-weight: 500;
+}
+.prose td:first-child code {
+	white-space: nowrap;
 }
 .prose hr {
 	border: 0;
@@ -971,8 +972,8 @@ pre code {
 		font-size: 49px;
 	}
 	.doc-page {
-		gap: 30px;
-		padding-inline: 36px;
+		gap: 24px;
+		padding-inline: 32px 24px;
 		grid-template-columns: minmax(0, 1fr) 150px;
 	}
 	.principles {
