@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.1 — 2026-10-15
+
+### Changed
+
+- Prioritize header personalization and Doxygen documentation in Neovim's C/C++ creation wizard when no header style is saved. Saved identity and project styles retain priority, and No header remains available.
+- Recognize C/C++ header and module filenames when selecting the Doxygen header style without an explicit language.
+- Reorganize the documentation into tutorials, how-to guides, reference, and explanation; improve article width and keep option labels together.
+- Publish the website through Cloudflare Workers Builds while GitHub Actions runs the repository checks.
+
+### Compatibility and updates
+
+- Requirements remain Neovim 0.11+ on macOS or Linux; the optional portable CLI requires Lua 5.1+ or LuaJIT. Built-in `vim.pack` installation requires Neovim 0.12+.
+- Existing manifests, CLI header defaults, and other languages keep their current behavior. Update through your plugin manager and restart Neovim; review `:RivetUpgrade` separately for project templates.
+- C++ `import std` requires CMake 4.4.0–4.4.4 and a compatible compiler/standard library. GPU starters require their matching SDK and hardware; CI does not certify GPU runtime support.
+
 ## 0.1.0 — 2026-10-13
 
 First public release of Rivet.nvim, formerly Outset.

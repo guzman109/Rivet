@@ -59,7 +59,14 @@ local input_values = {
   (vim.fn.exepath('clang++') ~= '' and vim.fn.exepath('clang++') or '/usr/bin/c++'),
 }
 local input_index = 0
-vim.ui.input = function(_, callback)
+vim.ui.input = function(options, callback)
+  if
+    not options.prompt:match('^Project name:')
+    and not options.prompt:match('^Project directory:')
+    and not options.prompt:match('^C%+%+ compiler')
+  then
+    return callback(options.default)
+  end
   input_index = input_index + 1
   callback(input_values[input_index])
 end
@@ -94,6 +101,7 @@ require('rivet').setup()
 require('rivet').new()
 assert(received.name == 'sandbox' and received.modules == true and received.standard == 26)
 assert(received.std_modules == false, 'Standard-library modules must remain opt-in')
+assert(received.comment_header.style == 'doc', 'C++ header setup must prioritize Doxygen')
 assert(received.generator == 'Ninja' and received.header_guard == 'pragma')
 assert(reviewed.root == temporary_root .. '/rivet-ui-project' and created == reviewed.root)
 assert(vim.fn.exists(':RivetNew') == 2 and vim.fn.exists(':RivetTask') == 2)

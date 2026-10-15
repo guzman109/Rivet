@@ -129,7 +129,15 @@ vim.ui.input = function(options, callback)
   end
 end
 vim.ui.select = function(items, options, callback)
-  callback(items[options.prompt:match('^File comment headers:') and 2 or 1])
+  if options.prompt:match('^File comment headers:') then
+    for _, item in ipairs(items) do
+      if item == 'Personalize and preview styles' then
+        return callback(item)
+      end
+    end
+    error('missing header personalization choice')
+  end
+  callback(items[1])
 end
 local previews = ui.select_preview
 ui.select_preview = function(title, items, callback, options)

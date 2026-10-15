@@ -1,6 +1,6 @@
 # Release and deployment
 
-The current version is `0.1.0`. Publishing the source repository does not create a versioned release or deploy the website. Rivet.nvim's code is MIT licensed, copyright 2026 Carlos Guzman; bundled license templates and website font/theme notices retain their upstream terms.
+The current version is `0.1.1`. Publishing the source repository does not create a versioned release or deploy the website. Rivet.nvim's code is MIT licensed, copyright 2026 Carlos Guzman; bundled license templates and website font/theme notices retain their upstream terms.
 
 ## Source publication
 
@@ -37,26 +37,26 @@ For a local deployment, authenticate with `bun x --no-install wrangler login` fr
 
 ## Publish with GitHub CLI
 
-Plugin managers use the Git tag, not the uploaded archive. Use an immutable semantic-version tag such as `v0.1.0`, matching `lua/rivet/version.lua`. The GitHub release adds changelog notes and optional source/checksum downloads. Users install through `vim.pack` or lazy.nvim; they do not need a manual checkout.
+Plugin managers use the Git tag, not the uploaded archive. Use an immutable semantic-version tag such as `v0.1.1`, matching `lua/rivet/version.lua`. The GitHub release adds changelog notes and optional source/checksum downloads. Users install through `vim.pack` or lazy.nvim; they do not need a manual checkout.
 
 After committing and merging the verified release changes, confirm GitHub CI passes for that exact `main` commit. Push the annotated tag, then create a draft with the verified archive and notes:
 
 ```sh
-git tag -a v0.1.0 -m 'Rivet.nvim 0.1.0'
-git push origin v0.1.0
-gh release create v0.1.0 \
-  dist/rivet.nvim-0.1.0.tar.gz \
-  dist/rivet.nvim-0.1.0.tar.gz.sha256 \
-  --verify-tag --title 'Rivet.nvim 0.1.0' \
+git tag -a v0.1.1 -m 'Rivet.nvim 0.1.1'
+git push origin v0.1.1
+gh release create v0.1.1 \
+  dist/rivet.nvim-0.1.1.tar.gz \
+  dist/rivet.nvim-0.1.1.tar.gz.sha256 \
+  --verify-tag --title 'Rivet.nvim 0.1.1' \
   --notes-file /path/to/release-notes.md --draft
 ```
 
 Inspect the draft assets and notes, then publish:
 
 ```sh
-gh release edit v0.1.0 --draft=false --latest
+gh release edit v0.1.1 --draft=false --latest
 ```
 
-For a release candidate, use a prerelease version such as `0.1.0-rc.1` consistently in the version file and tag, and pass `--prerelease` when creating it. Do not move a published release tag. Fixes belong in a new patch version.
+For a release candidate, use a prerelease version such as `0.1.1-rc.1` consistently in the version file and tag, and pass `--prerelease` when creating it. Do not move a published release tag. Fixes belong in a new patch version.
 
 Document minimum Neovim versions, language-tool requirements, known limits, and how to update existing projects. No separate marketplace registration or compiled plugin asset is needed. Neovim 0.12+ `vim.pack` users can select `vim.version.range('0.1.x')`; lazy.nvim accepts `version = '0.1.x'`. A branch choice of `main` follows development commits rather than tagged releases.

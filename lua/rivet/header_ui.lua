@@ -19,6 +19,11 @@ function M.configure(defaults, context, callback, opts)
       and require('rivet.tasks').service({ language = context.language }, 'headers')
     or headers
   local values = vim.deepcopy(defaults or { created = 'today' })
+  local language = context.language or require('rivet.file_templates').infer(context.filename)
+  local doxygen = language == 'cpp' or language == 'c'
+  if doxygen and values.style == nil then
+    values.style = 'doc'
+  end
   local index = 0
   local next_field
   next_field = safe(function()
@@ -47,14 +52,7 @@ function M.configure(defaults, context, callback, opts)
     for _, style in ipairs(headers.styles) do
       if style.id ~= 'spdx' or (values.license and values.license:match('%S')) then
         local choice = vim.deepcopy(style)
-        if
-          style.id == 'doc'
-          and (
-            context.language == 'cpp'
-            or context.language == 'c'
-            or not context.language and context.filename and context.filename:match('%.cp?p?$')
-          )
-        then
+        if style.id == 'doc' and doxygen then
           choice.label = 'Doxygen documentation'
           choice.description =
             'Use @file and @brief metadata for generated API documentation. See the Doxygen guide for HTML and XML output.'

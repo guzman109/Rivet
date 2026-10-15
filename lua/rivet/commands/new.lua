@@ -134,6 +134,9 @@ function M.new()
         end,
         run = function(next_step, back)
           local items = { 'No header', 'Personalize and preview styles' }
+          if spec.language == 'cpp' or spec.language == 'c' then
+            items = { 'Personalize and preview styles', 'No header' }
+          end
           local identity = context.config.identity or preferences.identity
           if identity then
             table.insert(items, 1, 'Use saved identity and preview styles')

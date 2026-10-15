@@ -3,14 +3,14 @@ title: Document your API with Doxygen
 description: Generate and inspect HTML and XML documentation for a C or C++ project.
 section: How-to guides
 order: 8
-updated: '2026-10-14'
+updated: '2026-10-15'
 ---
 
 Use this guide to generate an API reference from a C or C++ project. You need an existing project and Doxygen on `PATH`; check with `doxygen --version`. On macOS, install it with `brew install doxygen` ([formula](https://formulae.brew.sh/formula/doxygen)); other platforms can follow the [installation guide](https://www.doxygen.nl/manual/install.html).
 
 ## 1. Document the public interface
 
-In a Rivet project, run `:RivetHeaderDefaults` and choose **Doxygen documentation** for future files. Use `:RivetHeader` to add it to an existing header or module interface. See [file comment headers](/docs/comment-headers/) for the commands.
+For new C/C++ projects, `:RivetNew` offers header personalization first and puts **Doxygen documentation** first unless you have a saved style. In an existing Rivet project, run `:RivetHeaderDefaults` and choose **Doxygen documentation** for future files. Use `:RivetHeader` to add it to an existing header or module interface. See [file comment headers](/docs/comment-headers/) for the commands.
 
 Add API comments beside public declarations. For example, document a public addition function:
 

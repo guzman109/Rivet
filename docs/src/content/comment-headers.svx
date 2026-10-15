@@ -3,10 +3,12 @@ title: File comment headers
 description: Header commands, metadata fields, styles, and update behavior.
 section: Reference
 order: 5
-updated: '2026-10-14'
+updated: '2026-10-15'
 ---
 
 File comment headers identify a source file, its project, and optional author or license details. Rivet stores project defaults in `.rivet.json` and applies the language's comment syntax when generating files.
+
+For C/C++, the Neovim creation wizard offers header personalization first and selects **Doxygen documentation** first when no style is saved. Saved identity and project styles take precedence; **No header** remains available.
 
 ## Commands
 

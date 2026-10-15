@@ -219,8 +219,10 @@ review shows actual filenames and complete headers in both files of a pair.
 Use |:RivetHeaderDefaults| to set future-file headers in a Rivet-owned
 project.
 
-For C/C++, choose Doxygen documentation to start API documentation beside the
-code. The website Doxygen guide covers HTML/XML and documentation consumers.
+For C/C++, the creation wizard offers header personalization first. Doxygen
+documentation is the first style when no style is saved; saved identity and
+project styles take precedence. No header remains available. The website
+Doxygen guide covers HTML/XML and documentation consumers.
 
 The final review lists every planned file with its full content (and a diff
 for changes). Press `c` or <C-s> to apply it. Nothing is written before then.
