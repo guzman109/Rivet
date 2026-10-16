@@ -3,6 +3,7 @@ local context = require('rivet.context')
 
 -- Public functions live in rivet.commands.*; they load on first use.
 local exports = {
+  install_cli = 'cli',
   new = 'new',
   cmake = 'cmake',
   config = 'config',
@@ -40,6 +41,7 @@ setmetatable(M, {
 
 -- { :Rivet subcommand, :RivetX command, function, description, optional tool argument }
 local commands = {
+  { 'install-cli', 'RivetInstallCLI', 'install_cli', 'Link the CLI into ~/.local/bin' },
   { 'new', 'RivetNew', 'new', 'Create a project with previews' },
   { 'file', 'RivetFile', 'file', 'Add a file from a language template' },
   { 'files', 'RivetFiles', 'files', 'Review a registered file move or removal' },

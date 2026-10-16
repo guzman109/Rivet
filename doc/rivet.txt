@@ -88,6 +88,18 @@ Rivet installs no key mappings. For example: >lua
                   |:RivetBuildPreset| and `:Rivet task build` is
                   `:RivetTask build`.
 
+                                                            *:RivetInstallCLI*
+:RivetInstallCLI  Link this plugin's CLI into ~/.local/bin.
+                  (`:Rivet install-cli`)
+                  Existing files or unrelated symlinks are never overwritten.
+                  Add ~/.local/bin to your shell PATH if needed, then run
+                  `rivet --help` in a terminal. Requires Lua 5.1+ or LuaJIT
+                  (set RIVET_LUA=luajit). The link follows plugin updates.
+                  Moving/removing the plugin breaks the link; remove the old
+                  symlink before installing from a new location.
+                  Custom directory: >lua
+                    require('rivet').install_cli('/your/bin')
+<
 Creating projects ~
                                                                    *:RivetNew*
 :RivetNew         Choose a language, profile, and options with previews, then

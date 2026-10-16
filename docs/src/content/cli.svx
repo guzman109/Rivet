@@ -6,7 +6,11 @@ order: 1
 updated: '2026-10-14'
 ---
 
-Run the optional CLI from a [source checkout or extracted archive](/docs/start-here/#local-development) with `bin/rivet`, or add `bin/` to `PATH`. It requires Lua 5.1+ or LuaJIT on macOS/Linux. To select LuaJIT, use `RIVET_LUA=luajit rivet doctor`.
+After installing the Neovim plugin, run `:RivetInstallCLI` (or `:Rivet install-cli`) once to link its launcher into `~/.local/bin`. The link follows plugin updates and existing commands are never overwritten. If needed, add `export PATH="$HOME/.local/bin:$PATH"` to your shell configuration and open a new terminal. For a different destination, use `:lua require('rivet').install_cli('/your/bin')`.
+
+It requires Lua 5.1+ or LuaJIT on macOS/Linux. To select LuaJIT, set `export RIVET_LUA=luajit` in your shell configuration. Removing or moving the plugin breaks the link; remove the old symlink and rerun the install command after moving it. To uninstall the CLI link, use `rm ~/.local/bin/rivet`.
+
+You can also run the CLI from a [source checkout or extracted archive](/docs/start-here/#local-development) with `bin/rivet`, or add `bin/` to `PATH`.
 
 ## Shared creation options
 

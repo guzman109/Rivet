@@ -97,7 +97,15 @@ Every subcommand also exists as a `:Rivet…` command (`:RivetNew`,
 
 Task output shows its controls: `q` closes the view, Enter closes completed output, and Ctrl-C stops a running task. Set `task_output = 'close-on-success'` in `setup()` to close successful output automatically; reopen it with `:Rivet output`.
 
-From the shell, add `bin/` to your `PATH`:
+To use the CLI outside Neovim after installing the plugin, run
+`:RivetInstallCLI` (or `:Rivet install-cli`) once. This links the installed
+plugin's launcher into `~/.local/bin` and follows plugin updates. It refuses
+to overwrite an existing command. If that directory is not on your shell's
+`PATH`, add `export PATH="$HOME/.local/bin:$PATH"` to your shell configuration
+and open a new terminal. The CLI requires Lua 5.1+ or LuaJIT; for LuaJIT,
+also set `export RIVET_LUA=luajit`.
+
+Then run from the shell:
 
 ```sh
 rivet new ./engine --name engine --modules true --preview  # review the plan

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.2 — 2026-10-16
+
+### Added
+
+- `:RivetInstallCLI` / `:Rivet install-cli` links the installed plugin's CLI into `~/.local/bin`, with PATH and Lua runtime guidance. The Lua API accepts a custom directory. Repeated installation is safe, and existing files or unrelated symlinks are preserved.
+- Installation instructions for using the CLI from a terminal after installing the Neovim plugin. Symlinks follow plugin updates; moving or removing the plugin requires removing the old link.
+
+### Compatibility and updates
+
+- Requirements remain Neovim 0.11+ on macOS or Linux, plus Lua 5.1+ or LuaJIT for the CLI. Built-in `vim.pack` requires Neovim 0.12+.
+- Update through your plugin manager, restart Neovim, and run `:RivetInstallCLI` once. Add `~/.local/bin` to your shell PATH if needed. Review `:RivetUpgrade` separately for project templates.
+- C++ `import std` requires CMake 4.4.0–4.4.4 and a compatible compiler/standard library. GPU starters require their matching SDK and hardware; CI does not certify GPU runtime support.
+
 ## 0.1.1 — 2026-10-15
 
 ### Changed
