@@ -3,7 +3,7 @@ title: CLI reference
 description: Shared commands, language-specific creation options, native tasks, and preview behavior.
 section: Reference
 order: 1
-updated: '2026-10-14'
+updated: '2026-10-16'
 ---
 
 After installing the Neovim plugin, run `:RivetInstallCLI` (or `:Rivet install-cli`) once to link its launcher into `~/.local/bin`. The link follows plugin updates and existing commands are never overwritten. If needed, add `export PATH="$HOME/.local/bin:$PATH"` to your shell configuration and open a new terminal. For a different destination, use `:lua require('rivet').install_cli('/your/bin')`.
@@ -11,6 +11,48 @@ After installing the Neovim plugin, run `:RivetInstallCLI` (or `:Rivet install-c
 It requires Lua 5.1+ or LuaJIT on macOS/Linux. To select LuaJIT, set `export RIVET_LUA=luajit` in your shell configuration. Removing or moving the plugin breaks the link; remove the old symlink and rerun the install command after moving it. To uninstall the CLI link, use `rm ~/.local/bin/rivet`.
 
 You can also run the CLI from a [source checkout or extracted archive](/docs/start-here/#local-development) with `bin/rivet`, or add `bin/` to `PATH`.
+
+## Terminal appearance and shell completions
+
+The CLI uses Rivet’s maroon Catppuccin accents throughout help, previews, prompts,
+diagnostics, and task summaries. `rivet --help` shows a grouped overview;
+`rivet new --help` or `rivet help new` shows a command’s options and notes.
+Color is automatic in terminals and disabled for redirected output, `TERM=dumb`,
+or `NO_COLOR`. Set `RIVET_THEME=light` for a light terminal; the default is `dark`.
+`RIVET_COLOR=always|never|auto` overrides detection (`NO_COLOR` still wins).
+Generated file contents, completion scripts, and child-process output stay verbatim.
+
+Completions cover commands, command-specific flags, fixed option values, and paths.
+They do not run builds, query project tools, or download dependencies. Project target
+and custom preset names are entered manually. Regenerate saved scripts after updating Rivet.
+
+**Fish** — install in the user completion directory:
+
+```fish
+mkdir -p ~/.config/fish/completions
+rivet completions fish > ~/.config/fish/completions/rivet.fish
+source ~/.config/fish/completions/rivet.fish
+```
+
+If `XDG_CONFIG_HOME` is set, use `$XDG_CONFIG_HOME/fish/completions` instead.
+For just the current session: `rivet completions fish | source`.
+
+**Bash** — add this to `~/.bashrc` (or `~/.bash_profile` on macOS):
+
+```bash
+source <(rivet completions bash)
+```
+
+**Zsh** — add this to `~/.zshrc`, after your completion framework initializes:
+
+```zsh
+# If your framework does not already initialize completion:
+autoload -Uz compinit && compinit
+source <(rivet completions zsh)
+```
+
+Open a new shell after editing its configuration. Bash and Zsh startup snippets
+load the current completion definitions on each shell start; no separate package is needed.
 
 ## Shared creation options
 

@@ -6,7 +6,7 @@ local ok, result = pcall(function()
   return require('rivet.cli').main(arg)
 end)
 if not ok then
-  io.stderr:write('rivet: ' .. tostring(result) .. '\n')
+  require('rivet.terminal').error(result)
   os.exit(1)
 end
 os.exit(result or 0)

@@ -1,121 +1,16 @@
 local M = {}
 local rt = require('rivet.runtime')
 local project = require('rivet.project')
-local function help()
-  print([=[
-Rivet — Neovim-first project tools (macOS/Linux)
-
-rivet new ROOT [--name NAME] [--interactive] [--preview] [--build]
-  --language cpp|c|python|rust|swift|lua
-  --profile general|cpu|openmp|mpi|cuda|metal|webgpu|vulkan|opengl
-  --cuda-standard 17|20|23 --cuda-architectures native|all-major|80;90
-  --manager python|uv --edition 2021|2024
-  --runtime lua|luajit|neovim (Lua projects)
-  --standard 17|20|23|26 (C++), 11|17|23 (C)
-  --modules true|false --std-modules true|false
-  --module-layout single|split
-  --style LLVM|Google|Chromium|Mozilla|WebKit|Microsoft|GNU
-  --layout feature|library|flat --kind app|library (Rust also: workspace; Lua also: plugin)
-  --header-guard pragma|ifndef
-  --generator Ninja|"Unix Makefiles" --compiler /path/to/clang++
-  --git true|false
-  --license none|MIT|Apache-2.0|BSD-3-Clause|GPL-3.0-only
-  --license-holder "Ada Lovelace" --license-year 2026
-rivet file NAME [--target NAME] [--preview]
-  --language cpp|c|lua selects a mixed-language file template.
-  C++ --kind source|header|pair|class|module|module_impl|module_pair|c_source|c_header|c_pair
-  Lua --kind module|script|embedded
-  Other providers use their native source template.
-rivet target NAME --kind app|library
-rivet dependency NAME --repository owner/repo --tag PIN --target lib::lib --link-to NAME
-rivet move FROM TO [--preview]
-rivet remove PATH [--preview]
-rivet module-rename FROM TO [--preview]
-rivet repair MANAGED_FILE [--preview]
-rivet migrate [--root PATH] [--preview]
-rivet upgrade [--root PATH] [--preview]
-rivet config [TOOL [KEY VALUE]] [--root PATH] [--preview]
-  TOOL: clang-format|clang-tidy|clangd. Omit KEY VALUE to list settings and descriptions.
-rivet --version
-rivet targets
-rivet configure|build|check|test|run|format|lint|package|xcode [--preset NAME] [--target APP]
-  --build-preset NAME --test-preset NAME --build-target TARGET
-rivet cache [KEY VALUE] [--preset NAME]
-rivet doctor [--root PATH] [--preset NAME]
-rivet styles|layouts
-
-All project commands accept --root PATH (default: nearest supported project).
-Existing CMake/Cargo/Python/SwiftPM projects do not need an Rivet manifest for tasks.
-Only manifest-owned projects support generated file mutations.
-Runtime argv/env/cwd and optional benchmark/profile/submit/status/cancel hooks live
-in .rivet.local.json. Hooks run only when explicitly selected.
-File/target/dependency commands accept --preview to inspect without writing.
-New defaults: C++26, named modules, standard-library headers, feature layout,
-Ninja, LLVM style. --std-modules true opts into import std independently of
---modules; CMake verifies actual toolchain support and errors if unavailable.
-Use new . to create in the current folder; the folder supplies the default name.
-C++ names are normalized to identifiers; --name overrides the inferred name.
---git true initializes Git after creation or reuses the enclosing repository.
-Git initialization is opt-in; no files are staged or committed. Language-specific ignore rules
-are always generated, before existing .gitignore rules so user exceptions win.
-new --build runs the provider's Build workflow (Debug unless --preset is set).
-After configure, .clangd follows the selected compilation database via
-.cache/rivet. Custom .clangd files are preserved.
-If configure/build fails, generated files remain available for correction.
-The first import std build generates module interfaces used by the compiler
-and clangd. --preview never writes or builds, including with --build.
-CMake Build configures first; Test/Run configure and build. Native providers
-use their ecosystem tasks. C++ projects also include optional justfile recipes.
-No packages are downloaded by scaffolding. CPM downloads only during configure
-after a dependency is explicitly added. No runtime LuaRocks dependencies.
-]=])
-end
+local term = require('rivet.terminal')
+local reference = require('rivet.cli_reference')
 local function parse(args)
   local positional, opts, i = {}, {}, 2
-  local allowed = {
-    preview = true,
-    interactive = true,
-    build = true,
-    help = true,
-    modules = true,
-    std_modules = true,
-    module_layout = true,
-    build_preset = true,
-    test_preset = true,
-    build_target = true,
-    style = true,
-    layout = true,
-    kind = true,
-    header_guard = true,
-    generator = true,
-    compiler = true,
-    standard = true,
-    name = true,
-    root = true,
-    target = true,
-    module = true,
-    repository = true,
-    tag = true,
-    version = true,
-    link_to = true,
-    preset = true,
-    language = true,
-    git = true,
-    from = true,
-    to = true,
-    profile = true,
-    cuda_standard = true,
-    cuda_architectures = true,
-    manager = true,
-    runtime = true,
-    edition = true,
-    license = true,
-    license_holder = true,
-    license_year = true,
-  }
+  local allowed = reference.allowed()
   while i <= #args do
     local arg = args[i]
-    if arg:sub(1, 2) == '--' then
+    if arg == '-h' then
+      opts.help = true
+    elseif arg:sub(1, 2) == '--' then
       local key = arg:sub(3):gsub('-', '_')
       assert(allowed[key], 'Unknown option: --' .. arg:sub(3))
       if key == 'preview' or key == 'interactive' or key == 'help' or key == 'build' then
@@ -146,7 +41,7 @@ local function parse(args)
 end
 local function show_notes(plan)
   for _, note in ipairs(plan.notes or {}) do
-    print('Note: ' .. note)
+    term.message('warning', 'Note:', note)
   end
 end
 local function show(plan)
@@ -155,30 +50,31 @@ local function show(plan)
     paths[#paths + 1] = path
   end
   table.sort(paths)
-  print('Project: ' .. plan.root)
-  print('Name: ' .. plan.spec.name)
+  term.heading('Preview · ' .. plan.spec.name)
+  term.row('Project:', plan.root)
+  term.row('Files:', tostring(#paths))
   show_notes(plan)
   if plan.git then
-    print(plan.git.summary)
+    term.message('muted', plan.git.summary)
   end
   for _, path in ipairs(paths) do
-    print('\n--- ' .. path .. ' ---')
+    term.heading('--- ' .. path .. ' ---')
     if path == '.rivet.json' then
-      print('(project manifest)')
+      term.message('muted', '(project manifest)')
     else
       io.write(plan.files[path] or '(remove file)\n')
     end
   end
 end
 local function choose(prompt, items)
-  print('\n' .. prompt)
+  term.heading(prompt)
   for i, item in ipairs(items) do
-    print(i .. '. ' .. item.label .. ' — ' .. (item.description or ''))
+    term.row(i .. '. ' .. item.label, item.description or '')
     if item.preview then
       print(type(item.preview) == 'table' and table.concat(item.preview, '\n') or item.preview)
     end
   end
-  io.write('Choice [1]: ')
+  term.prompt('Choice [1] › ')
   local reply = io.read('*l')
   assert(reply, 'Cancelled')
   local index = reply == '' and 1 or tonumber(reply)
@@ -192,11 +88,11 @@ local function interactive(opts)
   end
   if opts.license ~= 'none' then
     if not opts.license_holder then
-      io.write('Copyright holder (person or organization): ')
+      term.prompt('Copyright holder (person or organization) › ')
       opts.license_holder = licenses.holder(assert(io.read('*l'), 'Cancelled'))
     end
     if not opts.license_year then
-      io.write('Copyright year [' .. os.date('%Y') .. ']: ')
+      term.prompt('Copyright year [' .. os.date('%Y') .. '] › ')
       local year = assert(io.read('*l'), 'Cancelled')
       opts.license_year = licenses.year(year ~= '' and year or nil)
     end
@@ -235,7 +131,7 @@ local function interactive(opts)
     )
     if visible and opts[step.key] == nil then
       if step.input then
-        io.write(step.title .. ' [' .. (step.default or '') .. ']: ')
+        term.prompt(step.title .. ' [' .. (step.default or '') .. '] › ')
         local value = assert(io.read('*l'), 'Cancelled')
         opts[step.key] = value ~= '' and value or step.default
       else
@@ -254,11 +150,17 @@ local function run_task(root, name, preset, target_name, options)
     end
     local argv, cwd = require('rivet.tasks').command(root, tasks, step)
     assert(argv, 'Project has no runnable executable')
-    print('> ' .. table.concat(argv, ' '))
+    local display = {}
+    for _, argument in ipairs(argv) do
+      display[#display + 1] = argument:find('[%s;]') and rt.quote(argument) or argument
+    end
+    term.heading(step:sub(1, 1):upper() .. step:sub(2))
+    term.message('command', '›', table.concat(display, ' '))
     local result = rt.run(argv, { cwd = cwd or root })
     io.write(result.stdout)
     io.stderr:write(result.stderr)
     if result.code ~= 0 then
+      term.message('error', 'Failed', step .. ' exited with status ' .. result.code)
       return result.code
     end
     if tasks.after_step then
@@ -271,21 +173,27 @@ local function run_task(root, name, preset, target_name, options)
       end
     end
   end
+  term.message('success', 'Done', name .. ' completed')
   return 0
 end
 function M.main(args)
   local command = args[1]
   if command == '--version' then
-    print('Rivet.nvim ' .. require('rivet.version'))
+    term.message('accent', 'Rivet.nvim', require('rivet.version'))
     return 0
   end
-  if not command or command == '--help' or command == 'help' then
-    help()
+  if not command or command == '--help' or command == '-h' or command == 'help' then
+    reference.help(args[2])
     return 0
   end
   local pos, opts = parse(args)
   if opts.help then
-    help()
+    reference.help(command)
+    return 0
+  end
+  if command == 'completions' then
+    assert(#pos == 1, 'Usage: rivet completions fish|bash|zsh')
+    io.write(require('rivet.completions').generate(pos[1]))
     return 0
   end
   assert(not opts.build or command == 'new', '--build is only available with rivet new')
@@ -301,7 +209,7 @@ function M.main(args)
       show(plan)
     else
       project.apply(root, plan)
-      print('Migrated project: ' .. root)
+      term.message('success', 'Migrated project:', root)
     end
     return 0
   end
@@ -311,7 +219,12 @@ function M.main(args)
       or require('rivet.doctor')
     local exit = 0
     for _, entry in ipairs(doctor.inspect(root, opts.preset, { build_preset = opts.build_preset })) do
-      print(entry.level:upper() .. ': ' .. entry.message)
+      term.message(
+        ({ error = 'error', warning = 'warning', warn = 'warning', ok = 'success' })[entry.level]
+          or 'muted',
+        entry.level:upper() .. ':',
+        entry.message
+      )
       if entry.level == 'error' then
         exit = 1
       end
@@ -320,7 +233,8 @@ function M.main(args)
   end
   if command == 'styles' or command == 'layouts' then
     for _, item in ipairs(require('rivet.catalog')[command]) do
-      print(item.id .. ' — ' .. item.label .. '\n' .. item.description)
+      term.heading(item.id .. ' · ' .. item.label)
+      print(item.description)
       if item.preview then
         print(type(item.preview) == 'table' and table.concat(item.preview, '\n') or item.preview)
       end
@@ -331,15 +245,20 @@ function M.main(args)
     local config = require('rivet.tool_config')
     if not pos[1] then
       for _, tool in ipairs(config.tools()) do
-        print(tool.id .. ' — ' .. tool.description .. '\n  File: ' .. tool.path)
-        print('  Reference: ' .. tool.url)
+        term.heading(tool.id)
+        print(tool.description)
+        term.row('File:', tool.path)
+        term.row('Reference:', tool.url)
       end
     else
       local tool = config.tool(pos[1])
-      print(tool.label .. '\n' .. tool.description)
-      print('File: ' .. tool.path .. '\nReference: ' .. tool.url)
+      term.heading(tool.label)
+      print(tool.description)
+      term.row('File:', tool.path)
+      term.row('Reference:', tool.url)
       for _, entry in ipairs(config.catalog(tool.id)) do
-        print('\n' .. entry.key .. ' (' .. entry.type .. ') — ' .. entry.description)
+        term.heading(entry.key .. ' (' .. entry.type .. ')')
+        print(entry.description)
         if entry.default then
           print('  Default: ' .. entry.default)
         end
@@ -377,14 +296,14 @@ function M.main(args)
       return 0
     end
     if interactive_mode then
-      io.write('\nCreate project? [y/N]: ')
+      term.prompt('\nCreate project? [y/N] › ')
       if io.read('*l') ~= 'y' then
-        print('Cancelled')
+        term.message('muted', 'Cancelled')
         return 0
       end
     end
     project.apply(plan.root, plan)
-    print('Created ' .. plan.root)
+    term.message('success', 'Created', plan.root)
     if build then
       return run_task(plan.root, 'build', preset)
     end
@@ -406,7 +325,7 @@ function M.main(args)
       show(plan)
     else
       project.apply(root, plan)
-      print('Updated ' .. require('rivet.tool_config').tool(pos[1]).path)
+      term.message('success', 'Updated', require('rivet.tool_config').tool(pos[1]).path)
       show_notes(plan)
     end
     return 0
@@ -418,7 +337,7 @@ function M.main(args)
       show(plan)
     else
       project.apply(root, plan)
-      print('Upgraded supplementary templates: ' .. root)
+      term.message('success', 'Upgraded supplementary templates:', root)
       show_notes(plan)
     end
     return 0
@@ -433,7 +352,7 @@ function M.main(args)
       show(plan)
     else
       project.apply(root, plan)
-      print('Updated ' .. root)
+      term.message('success', 'Updated', root)
     end
     return 0
   end
@@ -443,13 +362,13 @@ function M.main(args)
       show(plan)
     else
       project.apply(root, plan)
-      print('Restored generated file and saved edited backup')
+      term.message('success', 'Restored', 'Generated file restored; edited backup saved')
     end
     return 0
   end
   if command == 'targets' then
     for _, target in ipairs(require('rivet.tasks').targets(root, opts.preset, opts)) do
-      print(target.name .. ' (' .. target.type .. ')')
+      term.row(target.name, target.type)
     end
     return 0
   end
@@ -468,7 +387,7 @@ function M.main(args)
       show(plan)
     else
       project.apply(root, plan)
-      print('Updated ' .. root)
+      term.message('success', 'Updated', root)
     end
     return 0
   end
@@ -507,7 +426,8 @@ function M.main(args)
       return r.code
     end
     for _, e in ipairs(entries) do
-      print(e.name .. ':' .. e.type .. '=' .. e.value .. '\n  ' .. e.help)
+      term.heading(e.name .. ':' .. e.type .. '=' .. e.value)
+      print('  ' .. e.help)
     end
     return 0
   end

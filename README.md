@@ -114,6 +114,28 @@ rivet build --root ./engine --preset debug
 rivet test --root ./engine --preset debug
 ```
 
+The terminal CLI uses Rivet’s maroon Catppuccin palette, with focused help via
+`rivet new --help`. Colors adapt to terminal output; `NO_COLOR` disables them,
+and `RIVET_THEME=light` selects the light palette.
+
+Enable completions for the current shell:
+
+```fish
+rivet completions fish | source
+```
+
+```bash
+source <(rivet completions bash)
+```
+
+```zsh
+autoload -Uz compinit && compinit  # if not already initialized
+source <(rivet completions zsh)
+```
+
+See the [CLI guide](docs/src/content/cli.svx#terminal-appearance-and-shell-completions)
+for persistent setup.
+
 ## Documentation
 
 The guides live in [`docs/src/content`](docs/src/content) and build into the

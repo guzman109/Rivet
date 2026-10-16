@@ -888,7 +888,7 @@ test(
     rt.write(rt.join(directory, 'notes.txt'), 'Keep me.\n')
     local cli = { 'lua', rt.join(root, 'bin/rivet.lua'), 'new', '.', '--git', 'true', '--preview' }
     local preview = run(cli, directory)
-    check(preview:find('Name: project_123_My_Engine', 1, true))
+    check(preview:find('Preview · project_123_My_Engine', 1, true))
     check(preview:find('Git: initialize', 1, true))
     check(
       not rt.exists(rt.join(directory, '.git')) and not rt.exists(rt.join(directory, '.rivet.json'))

@@ -26,13 +26,86 @@ local function contains(text, fragment)
   assert(text:find(fragment, 1, true), 'Missing CLI output: ' .. fragment .. '\n' .. text)
 end
 local ok, err = pcall(function()
-  test('help parses and advertises the new command and runtime options', function()
+  test('help provides a grouped overview and focused command references', function()
     local help = run({ 'help' })
-    contains(help, '--runtime lua|luajit|neovim')
-    contains(help, 'rivet config [TOOL [KEY VALUE]]')
-    contains(help, 'rivet upgrade')
-    contains(help, 'module_pair')
-    contains(help, 'c_pair')
+    contains(help, 'Quick start')
+    contains(help, 'completions')
+    assert(not help:find('--cuda-standard', 1, true))
+    local creation = run({ 'new', '--help' })
+    contains(creation, '--runtime RUNTIME')
+    contains(creation, 'lua | luajit | neovim')
+    assert(creation == run({ 'help', 'new' }))
+    assert(creation == run({ 'new', '-h' }))
+    contains(run({ 'config', '--help' }), 'rivet config [TOOL [KEY VALUE]]')
+    contains(run({ 'file', '--help' }), 'module_pair')
+    contains(run({ 'file', '--help' }), 'c_pair')
+    local bad = rt.run({ bin, 'help', 'missing-command' })
+    assert(bad.code ~= 0)
+    contains(bad.stderr, 'Error  Unknown help topic: missing-command')
+    assert(not bad.stderr:find('.lua:', 1, true))
+  end)
+
+  test('terminal colors are controllable and never contaminate completion scripts', function()
+    local function envrun(env, args)
+      local argv = { 'env', '-u', 'NO_COLOR', '-u', 'TERM' }
+      for _, value in ipairs(env) do
+        argv[#argv + 1] = value
+      end
+      argv[#argv + 1] = bin
+      for _, value in ipairs(args) do
+        argv[#argv + 1] = value
+      end
+      local result = rt.run(argv)
+      assert(result.code == 0, result.stderr)
+      return result.stdout
+    end
+    assert(not run({ '--help' }):find(string.char(27), 1, true))
+    contains(
+      envrun({ 'RIVET_COLOR=always' }, { '--help' }),
+      string.char(27) .. '[1;38;2;235;160;172m'
+    )
+    contains(envrun({ 'RIVET_COLOR=always', 'RIVET_THEME=light' }, { '--help' }), '185;51;66m')
+    for _, override in ipairs({ 'NO_COLOR=1', 'TERM=dumb', 'RIVET_COLOR=never' }) do
+      assert(
+        not envrun({ 'RIVET_COLOR=always', override }, { '--help' }):find(string.char(27), 1, true)
+      )
+    end
+    for _, shell in ipairs({ 'bash', 'fish', 'zsh' }) do
+      local script = envrun({ 'RIVET_COLOR=always' }, { 'completions', shell })
+      assert(not script:find(string.char(27), 1, true))
+      local path = rt.join(temporary, 'rivet.' .. shell)
+      rt.write(path, script)
+      if rt.run({ 'sh', '-c', 'command -v ' .. shell }).code == 0 then
+        local check = rt.run({ shell, '-n', path })
+        assert(check.code == 0, check.stderr)
+      end
+    end
+    local bad = rt.run({ bin, 'completions', 'unknown' })
+    assert(bad.code ~= 0 and bad.stdout == '')
+  end)
+
+  test('installed shells complete choices and preserve values containing spaces', function()
+    local bash = rt.run({
+      'bash',
+      '-c',
+      'source "$1"; COMP_WORDS=(rivet new --generator ""); COMP_CWORD=3; _rivet; printf "<%s>\\n" "${COMPREPLY[@]}"',
+      '_',
+      rt.join(temporary, 'rivet.bash'),
+    })
+    assert(bash.code == 0, bash.stderr)
+    contains(bash.stdout, '<Unix Makefiles>')
+    if rt.run({ 'sh', '-c', 'command -v fish' }).code == 0 then
+      local fish = rt.run({
+        'fish',
+        '-c',
+        'source $argv[1]; complete -C "rivet new --runtime "; complete -C "rivet file --kind mod"',
+        rt.join(temporary, 'rivet.fish'),
+      })
+      assert(fish.code == 0 and fish.stderr == '', fish.stderr)
+      contains(fish.stdout, 'luajit')
+      contains(fish.stdout, 'module_pair')
+      assert(not fish.stdout:find('README.md', 1, true))
+    end
   end)
 
   test('tool catalogs are descriptive and available without a project', function()
@@ -79,6 +152,9 @@ local ok, err = pcall(function()
     })
     local spec = project.load(directory)
     assert(spec.language == 'lua' and spec.runtime == 'luajit' and spec.kind == 'library')
+    local build = run({ 'build', '--root', directory })
+    contains(build, 'Build')
+    contains(build, 'Done  build completed')
     local manifest = rt.read(rt.join(directory, '.rivet.json'))
     local module = run({ 'file', 'helper', '--kind', 'module', '--root', directory, '--preview' })
     contains(module, 'lua/sample_lua/helper.lua')

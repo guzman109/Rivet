@@ -100,6 +100,27 @@ Rivet installs no key mappings. For example: >lua
                   Custom directory: >lua
                     require('rivet').install_cli('/your/bin')
 <
+Terminal appearance and completions ~
+
+The shell CLI uses Rivet's maroon Catppuccin palette for help, prompts,
+previews, diagnostics, and task summaries. Use `rivet help COMMAND` or
+`rivet COMMAND --help` for focused help. NO_COLOR disables color;
+RIVET_COLOR=auto|always|never controls detection, and RIVET_THEME=dark|light
+selects the palette. Redirected output is plain by default.
+
+Enable shell completions in the current session: >
+    # Fish
+    rivet completions fish | source
+    # Bash
+    source <(rivet completions bash)
+    # Zsh (after compinit)
+    source <(rivet completions zsh)
+<
+Save Fish output as ~/.config/fish/completions/rivet.fish for persistence.
+Add the Bash/Zsh source line to the corresponding shell startup file.
+Completions suggest commands, flags, fixed choices, and paths without
+executing project tasks. Enter project targets and custom presets manually.
+
 Creating projects ~
                                                                    *:RivetNew*
 :RivetNew         Choose a language, profile, and options with previews, then
