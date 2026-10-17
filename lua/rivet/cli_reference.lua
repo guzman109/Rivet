@@ -232,6 +232,15 @@ command(
   { 'root', 'preview' }
 )
 command(
+  'compiler',
+  'Inspect',
+  '[PATH] [OPTIONS]',
+  'List or select a C++ compiler',
+  { 'root', 'preview' },
+  'Omit PATH to list discovered compilers. Selection uses isolated local build directories.',
+  'file'
+)
+command(
   'config',
   'Inspect',
   '[TOOL [KEY VALUE]] [OPTIONS]',

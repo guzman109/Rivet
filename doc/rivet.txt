@@ -191,6 +191,17 @@ Changing a project ~
                   (`:Rivet migrate`)
 
 Build choices ~
+                                                              *:RivetCompiler*
+:RivetCompiler    Discover and select a C++ compiler. (`:Rivet compiler`)
+                  Lists Apple Clang, LLVM, and GCC with versions and paths;
+                  includes an option to enter a compiler path manually.
+                  For Rivet-created C++ projects, review local debug/release
+                  preset changes before applying. Each compiler uses separate
+                  build directories. Unchanged generated Just recipes are
+                  updated; custom recipes are preserved with a notice.
+                  Edit toolchain-file presets through their toolchain file.
+                  Configure/build checks actual language and module support.
+
                                                                 *:RivetPreset*
 :RivetPreset      Change the remembered configure preset. (`:Rivet preset`)
 

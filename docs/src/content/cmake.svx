@@ -54,6 +54,31 @@ ctest --preset debug
 
 Without a local override, configure with `debug`. Generated local compiler presets keep the shared build directory. C++ projects also include optional Just recipes for configure, build, test, format, and application run.
 
+## Select a C++ compiler
+
+Use `:RivetCompiler` (or `:Rivet compiler`) to choose an installed compiler for a Rivet-created C++ project. The picker shows family, version, and executable path and accepts a manual path. Discovery scans `PATH`, standard Homebrew locations (including versioned LLVM/GCC installations), and Apple's selected developer toolchain. Aliases are deduplicated where possible.
+
+```sh
+rivet compiler                                      # list installed compilers
+rivet compiler /opt/homebrew/bin/g++-16 --preview    # review the change
+rivet compiler /opt/homebrew/bin/g++-16              # select for this project
+rivet build
+```
+
+Selection updates `local-debug` and `local-release` in ignored `CMakeUserPresets.json`, including matching build/test presets. Each compiler identity gets directories under `build/compilers/`; switching back can reuse its previous build. Existing build directories are retained, and unrelated preset settings are preserved. Toolchain-file presets must select their compiler through the toolchain file instead.
+
+Generated Just recipes resolve this selection on each invocation, including `just run`. Selection upgrades unchanged generated Just entry points in the same reviewed plan. Custom recipes are preserved with a notice; adapt them to the local build/test presets and their `binaryDir`. The generated Just shortcuts support `debug` and `release`; use native CMake or Rivet tasks for custom presets.
+
+After selection, direct native commands use the local presets for every step:
+
+```sh
+cmake --preset local-debug
+cmake --build --preset local-debug
+ctest --preset local-debug
+```
+
+Discovery identifies the compiler; configuration and building determine support for the project's requested language standard, libraries, and modules. Compiler selection does not change your clangd installation.
+
 ## Presets and target selection
 
 The editor remembers choices per project under `stdpath('state')/rivet/tasks/`:

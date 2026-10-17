@@ -316,8 +316,25 @@ function M.main(args)
     end
     return 0
   end
+  if command == 'compiler' and #pos == 0 then
+    for _, compiler in ipairs(require('rivet.compilers').discover()) do
+      print(compiler.label)
+    end
+    return 0
+  end
   local root = opts.root and rt.absolute(opts.root) or project.root(rt.cwd())
   assert(root, 'No Rivet project found; use --root PATH or rivet new ROOT')
+  if command == 'compiler' then
+    assert(#pos == 1, 'Usage: rivet compiler [PATH] [--root PATH] [--preview]')
+    local plan = require('rivet.compilers').plan(root, pos[1])
+    if opts.preview then
+      show(plan)
+    else
+      project.apply(root, plan)
+      show_notes(plan)
+    end
+    return 0
+  end
   if command == 'config' then
     assert(#pos == 3, 'Usage: rivet config TOOL [KEY VALUE] [--preview]')
     local plan = require('rivet.tool_config').plan(root, pos[1], pos[2], pos[3])

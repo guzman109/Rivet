@@ -213,3 +213,7 @@ rivet migrate --root /path/to/project --preview
 Repeat without `--preview` to migrate an Outset project; changed originals are backed up in `.rivet-recovery/`. The editor equivalent is `:RivetMigrate`. Application and module names stay the same. Configure again afterward.
 
 Projects with `.outset.json` require migration before tasks or mutations. The deprecated `outset` launcher delegates to Rivet and honors `OUTSET_LUA`; its warning announces removal in 0.3.0.
+
+## Discover and select C++ compilers
+
+`rivet compiler` lists installed Clang/GCC C++ drivers with versions and paths. Run `rivet compiler PATH --preview` to review selection for the current Rivet-created C++ project, then omit `--preview` to apply it. `--root PATH` selects another project. Compiler choices live in local CMake presets with separate build directories; see [compiler selection](/docs/cmake/#select-a-c-compiler).

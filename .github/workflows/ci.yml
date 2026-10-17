@@ -53,7 +53,7 @@ jobs:
           lua tests/migration.lua
           lua tests/integration.lua
           for runtime in lua luajit; do
-            for test in tests/lua_provider.lua tests/native_regressions.lua tests/file_templates.lua tests/tool_config.lua tests/upgrades.lua tests/embedding.lua tests/cli_features.lua; do
+            for test in tests/lua_provider.lua tests/native_regressions.lua tests/file_templates.lua tests/tool_config.lua tests/compilers.lua tests/upgrades.lua tests/embedding.lua tests/cli_features.lua; do
               "$runtime" "$test"
             done
           done
@@ -84,7 +84,7 @@ jobs:
           lua tests/migration.lua
           lua tests/integration.lua
           for runtime in lua luajit; do
-            for test in tests/lua_provider.lua tests/native_regressions.lua tests/file_templates.lua tests/tool_config.lua tests/upgrades.lua tests/embedding.lua tests/cli_features.lua; do
+            for test in tests/lua_provider.lua tests/native_regressions.lua tests/file_templates.lua tests/tool_config.lua tests/compilers.lua tests/upgrades.lua tests/embedding.lua tests/cli_features.lua; do
               "$runtime" "$test"
             done
           done

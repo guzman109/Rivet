@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Discover and select project C++ compilers with `:RivetCompiler` / `rivet compiler`, including Apple Clang, Homebrew LLVM, and versioned GCC drivers.
+- Isolate selected compilers in separate local CMake build directories and make generated Just tasks follow the selection. Preserve custom recipes and unrelated local preset settings.
+
 ## 0.1.3 — 2026-10-16
 
 ### Added

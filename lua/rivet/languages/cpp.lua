@@ -513,31 +513,10 @@ Configure, build, and run CTest after changing modules or target relationships.
 Review generated diffs before applying AI suggestions; do not execute downloaded code
 or add a dependency merely to answer a question about the build.
 ]],
-    ['justfile'] = [[# Optional command shortcuts; prefer the selected machine-local compiler.
-configure preset="debug":
-    #!/usr/bin/env sh
-    set -eu
-    chosen="{{preset}}"
-    if cmake --list-presets | grep -Fq '"local-{{preset}}"'; then
-      chosen="local-{{preset}}"
-    fi
-    cmake --preset "$chosen"
-
-build preset="debug": (configure preset)
-    cmake --build --preset {{preset}}
-
-test preset="debug": (build preset)
-    ctest --preset {{preset}}
-
-fmt: (configure "debug")
-    cmake --build --preset debug --target format
-]]
-      .. (
-        spec.kind == 'app'
-          and ('\nrun preset="debug": (build preset)\n    ./build/{{preset}}/' .. spec.name .. '\n')
-        or ''
-      ),
   }
+  for path, content in pairs(require('rivet.cpp_just').files(spec)) do
+    defaults[path] = content
+  end
   if spec.profile ~= 'general' then
     defaults['CMakeLists.txt'] = defaults['CMakeLists.txt']:gsub(
       'include%(cmake/RivetTargets.cmake%)',

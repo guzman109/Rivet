@@ -89,6 +89,7 @@ and press `c` on the final review to create the project. Then:
 :Rivet upgrade       " review updated supplementary templates
 :Rivet output        " reopen task output
 :Rivet stop          " stop the current project task
+:Rivet compiler      " discover and select a C++ compiler for this project
 :Rivet doctor        " check the toolchain this project actually uses
 ```
 
